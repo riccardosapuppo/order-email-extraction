@@ -1,0 +1,14 @@
+{
+  "name": "@order-email/core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reading orders out of email, and joining them up. No mailbox, no database, no network.",
+  "type": "module",
+  "main": "./build/src/index.js",
+  "types": "./build/src/index.d.ts",
+  "exports": { ".": "./build/src/index.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test \"build/test/**/*.test.js\""
+  }
+}

@@ -1,0 +1,4 @@
+# One line ending in the repository, whatever the machine that wrote it uses.
+* text=auto eol=lf
+*.png binary
+*.eml text eol=lf
