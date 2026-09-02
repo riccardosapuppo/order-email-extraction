@@ -144,7 +144,21 @@ describe('what is read out of an order', () => {
 
 describe('where every value came from', () => {
   it('each field points at the characters it was read from', () => {
-    const body = 'Please send:\n\n12 x blue nitrile gloves\n';
+    // Every shape of item line, because the offsets are worked out separately
+    // for each of them. The first version of this test used one line with no
+    // unit in it, and passed while `items[1].unit` pointed five characters
+    // into the product name — found by asking the running server for a message
+    // and reading what came back.
+    const body = [
+      'Please send:',
+      '',
+      '12 x blue nitrile gloves',
+      '4 boxes of alcohol wipes',
+      'paper towels, qty 20',
+      'and 6 x masks as well',
+      '',
+      'Needed by 16/03/2026.',
+    ].join('\n');
     const reading = read(email({ subject: 'PO 4471', body }));
 
     for (const { path, field } of fieldsOf(reading.fact)) {

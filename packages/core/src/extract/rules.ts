@@ -335,7 +335,12 @@ function inlineItems(line: string, start: number): Item[] {
     if (!Number.isFinite(quantity) || quantity <= 0) continue;
 
     const split = splitUnit(nameText);
-    const nameAt = line.indexOf(nameText, match.index) + split.offset;
+    // Where the name started before the unit was taken off the front of it.
+    // The unit is found in the original phrase, so its offset has to be
+    // measured from there — measuring from the trimmed name pointed the
+    // highlight five characters into the wrong word.
+    const wholeAt = line.indexOf(nameText, match.index);
+    const nameAt = wholeAt + split.offset;
     const quantityAt = line.indexOf(quantityText, match.index);
     const unitHit = firstHit(nameText, UNIT);
 
@@ -377,8 +382,8 @@ function inlineItems(line: string, start: number): Item[] {
               'body',
               {
                 ...unitHit,
-                from: start + (nameAt === -1 ? match.index : nameAt) + unitHit.from,
-                to: start + (nameAt === -1 ? match.index : nameAt) + unitHit.to,
+                from: start + (wholeAt === -1 ? match.index : wholeAt) + unitHit.from,
+                to: start + (wholeAt === -1 ? match.index : wholeAt) + unitHit.to,
               },
               'unit-word'
             ),
@@ -432,7 +437,8 @@ function itemsIn(body: string, doubts: string[]): Item[] {
     if (!Number.isFinite(quantity) || quantity <= 0) continue;
 
     const split = splitUnit(nameText);
-    const at = line.indexOf(nameText) + split.offset;
+    const wholeAt = line.indexOf(nameText);
+    const at = wholeAt + split.offset;
     const nameHit = {
       text: split.name,
       from: start + (at === -1 ? 0 : at),
@@ -456,8 +462,8 @@ function itemsIn(body: string, doubts: string[]): Item[] {
         ? {
             unit: fromHit(unitHit.text.toLowerCase(), 0.7, 'body', {
               ...unitHit,
-              from: nameHit.from + unitHit.from,
-              to: nameHit.from + unitHit.to,
+              from: start + wholeAt + unitHit.from,
+              to: start + wholeAt + unitHit.to,
             }, 'unit-word'),
           }
         : {}),
