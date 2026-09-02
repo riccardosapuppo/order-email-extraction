@@ -76,9 +76,17 @@ const KINDS: Array<{ kind: Kind; pattern: RegExp; rule: string }> = [
   },
 ];
 
-/** A purchase-order reference, in the shapes people write them. */
+/**
+ * A purchase-order reference, in the shapes people write them.
+ *
+ * "your order" is excluded on purpose. When a supplier writes "your order
+ * number SO 88120" they mean *their* number for it, not the buyer's — and
+ * reading it as the purchase-order reference gave every confirmation a
+ * reference that matched no order, and a spurious complaint that the subject
+ * and the body disagreed. That one belongs to SUPPLIER_REFERENCE below.
+ */
 const REFERENCE =
-  /\b(?:P\.?O\.?|purchase order|order|ref(?:erence)?|our order)\s*(?:number|no\.?|#|ref\.?)?\s*[:\-]?\s*([A-Z]{0,4}[-/ ]?\d{3,10}(?:[-/]\d{1,4})?)\b/i;
+  /\b(?<!your )(?:P\.?O\.?|purchase order|order|ref(?:erence)?|our order)\s*(?:number|no\.?|#|ref\.?)?\s*[:\-]?\s*(?:P\.?O\.?\s*)?([A-Z]{0,3}[-/ ]?\d{3,10}(?:[-/]\d{1,4})?)\b/i;
 
 /** A supplier's own number for the same order. */
 const SUPPLIER_REFERENCE =
@@ -124,13 +132,39 @@ const LINE_TRAILING =
  * and the cost of a wrong item is somebody being sent twelve of something.
  */
 const INLINE = new RegExp(
-  String.raw`\b(\d{1,4})\s*(?:x|×)\s*([a-z][\w'’\- ]{2,50}?)(?=[.,;]|\band\b|$)` +
-    String.raw`|\b(\d{1,4})\s+((?:box(?:es)?|pack(?:s|ets?)?|case(?:s)?|bottle(?:s)?|carton(?:s)?|roll(?:s)?|pair(?:s)?)\s+of\s+[a-z][\w'’\- ]{2,40}?)(?=[.,;]|\band\b|$)`,
+  String.raw`\b(\d{1,4})\s*(?:x|×)\s*([a-z][\w'’\- ]{2,50}?)(?=[.,;?!]|\band\b|\bas soon\b|$)` +
+    String.raw`|\b(\d{1,4})\s+((?:box(?:es)?|pack(?:s|ets?)?|case(?:s)?|bottle(?:s)?|carton(?:s)?|roll(?:s)?|pair(?:s)?)\s+of\s+[a-z][\w'’\- ]{2,40}?)(?=[.,;?!]|\band\b|\bas soon\b|$)`,
   'gi'
 );
 
 const UNIT =
   /\b(box(?:es)?|pack(?:s|ets?)?|case(?:s)?|bottle(?:s)?|carton(?:s)?|roll(?:s)?|pair(?:s)?|litre(?:s)?|l|kg|g|ml|unit(?:s)?)\b/i;
+
+/**
+ * "boxes of alcohol wipes" — the unit, and then the thing.
+ *
+ * Written this way, the unit is part of the phrase and the product is what
+ * follows it. Keeping the whole phrase as the name gives "4 boxes boxes of
+ * alcohol wipes" on any screen that shows the quantity, the unit and the name
+ * together, which is what the extraction tool printed the first time it ran.
+ *
+ * Written out rather than derived from UNIT by slicing its source. That is how
+ * the first attempt did it, and cutting `\b(` off one pattern to paste it into
+ * another left a capture group nobody had counted — so the "name" that came
+ * out was the unit, twice. A regular expression built by string arithmetic on
+ * another regular expression is one nobody can read and nobody can debug.
+ */
+const UNIT_THEN_THING =
+  /^(box(?:es)?|pack(?:s|ets?)?|case(?:s)?|bottle(?:s)?|carton(?:s)?|roll(?:s)?|pair(?:s)?)\s+of\s+(.+)$/i;
+
+/** The product, and the unit it was counted in, told apart. */
+function splitUnit(name: string): { name: string; offset: number } {
+  const match = UNIT_THEN_THING.exec(name);
+  if (!match || !match[2]) return { name, offset: 0 };
+
+  const thing = match[2].trim();
+  return { name: thing, offset: name.length - thing.length };
+}
 
 const URGENT = /\b(urgent|asap|as soon as possible|immediately|today|by tomorrow|priority)\b/i;
 const RELAXED = /\b(no rush|whenever|next month|not urgent|when convenient)\b/i;
@@ -275,7 +309,14 @@ function referenceOf(
 }
 
 function clean(reference: string): string {
-  return reference.trim().replace(/\s+/g, '').toUpperCase();
+  // The PO prefix comes off, so that "PO 4471" written in a body and "4471"
+  // written in a subject are one reference and not two that disagree. They
+  // were being reported as a disagreement on every dispatch notice.
+  return reference
+    .trim()
+    .replace(/\s+/g, '')
+    .toUpperCase()
+    .replace(/^P\.?O\.?[-/]?/, '');
 }
 
 /** Items written inside a sentence, with offsets into the whole body. */
@@ -293,22 +334,23 @@ function inlineItems(line: string, start: number): Item[] {
     const quantity = Number(quantityText);
     if (!Number.isFinite(quantity) || quantity <= 0) continue;
 
-    const nameAt = line.indexOf(nameText, match.index);
+    const split = splitUnit(nameText);
+    const nameAt = line.indexOf(nameText, match.index) + split.offset;
     const quantityAt = line.indexOf(quantityText, match.index);
     const unitHit = firstHit(nameText, UNIT);
 
     found.push({
       name: fromHit(
-        nameText,
+        split.name,
         // Lower than a list line, and deliberately so. A sentence has no
         // structure to lean on, so this is the reading most likely to be
         // wrong — and the number is what decides whether a person looks.
         0.65,
         'body',
         {
-          text: nameText,
+          text: split.name,
           from: start + (nameAt === -1 ? match.index : nameAt),
-          to: start + (nameAt === -1 ? match.index + match[0].length : nameAt + nameText.length),
+          to: start + (nameAt === -1 ? match.index + match[0].length : nameAt + split.name.length),
           groups: [],
         },
         'quantity-inside-a-sentence'
@@ -389,11 +431,12 @@ function itemsIn(body: string, doubts: string[]): Item[] {
     const quantity = Number(quantityText);
     if (!Number.isFinite(quantity) || quantity <= 0) continue;
 
-    const at = line.indexOf(nameText);
+    const split = splitUnit(nameText);
+    const at = line.indexOf(nameText) + split.offset;
     const nameHit = {
-      text: nameText,
+      text: split.name,
       from: start + (at === -1 ? 0 : at),
-      to: start + (at === -1 ? line.length : at + nameText.length),
+      to: start + (at === -1 ? line.length : at + split.name.length),
       groups: [] as string[],
     };
     const quantityAt = line.indexOf(quantityText);
@@ -407,7 +450,7 @@ function itemsIn(body: string, doubts: string[]): Item[] {
     const unitHit = firstHit(nameText, UNIT);
 
     items.push({
-      name: fromHit(nameText, 0.8, 'body', nameHit, leading ? 'line-leading-quantity' : 'line-trailing-quantity'),
+      name: fromHit(split.name, 0.8, 'body', nameHit, leading ? 'line-leading-quantity' : 'line-trailing-quantity'),
       quantity: fromHit(quantity, 0.9, 'body', quantityHit, 'line-quantity'),
       ...(unitHit
         ? {

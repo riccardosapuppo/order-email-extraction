@@ -1,0 +1,20 @@
+From: Accounts <accounts@medisupply.example>
+To: anna.rossi@northgate-clinic.example
+Subject: Invoice INV-20260315 for PO 4471
+Date: Sun, 15 Mar 2026 09:00:00 +0100
+Message-ID: <invoice@medisupply.example>
+Content-Type: multipart/mixed; boundary="Boundary-A1"
+
+--Boundary-A1
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Please find our invoice attached for order 4471. Payment is due within 30 d=
+ays.
+--Boundary-A1
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="INV-20260315.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQK
+--Boundary-A1--

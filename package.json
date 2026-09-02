@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "extract": "node tools/extract.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -181,8 +181,14 @@ export function decide(message: Message, reading: Reading, orders: readonly Orde
   //    these. Without this guard a customer's second order was swallowed into
   //    their first — the messages come from the same address, and that was
   //    enough.
+  //    Never for an order, either. An email that places an order opens one —
+  //    that is what it is. Attaching it to an existing order because it came
+  //    from the same address turns a customer's second request into extra
+  //    items on their first, and the second request then has no order of its
+  //    own to be confirmed or shipped against. Found by running the tool over
+  //    a mailbox where somebody ordered twice in a week.
   const domain = domainOf(message.from);
-  if (domain && !reference) {
+  if (domain && !reference && reading.fact.kind !== 'order') {
     const nearby = orders.filter(
       (order) =>
         order.correspondents.includes(domain) &&

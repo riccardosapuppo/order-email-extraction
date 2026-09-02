@@ -1,0 +1,9 @@
+From: MediSupply News <news@medisupply.example>
+To: anna.rossi@northgate-clinic.example
+Subject: This month's deals on consumables
+Date: Tue, 03 Mar 2026 07:00:00 +0100
+Message-ID: <news@medisupply.example>
+Content-Type: text/html; charset=utf-8
+
+<html><body><h1>Special offer</h1><p>20 x boxes of gloves for the price of 15!</p>
+<p><a href="https://medisupply.example/unsubscribe">Unsubscribe</a></p></body></html>
