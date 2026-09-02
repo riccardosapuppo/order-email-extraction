@@ -1,4 +1,12 @@
 # One line ending in the repository, whatever the machine that wrote it uses.
 * text=auto eol=lf
 *.png binary
-*.eml text eol=lf
+
+# Except the mail. A message uses CRLF between its lines — that is in the
+# format, not a Windows habit — and normalising it to LF produces files that
+# are no longer what a mail client would export, which is exactly what these
+# are here to be. Left exactly as they are.
+#
+# The reader copes with either, deliberately: a mailbox that has been through
+# a text editor is a mailbox somebody will point this at.
+*.eml -text
