@@ -1,0 +1,35 @@
+/* The orders table. */
+
+.items .item {
+  display: block;
+  white-space: nowrap;
+}
+
+.items .item strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.who span {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+td a {
+  font-weight: 560;
+}
+
+.after {
+  margin-top: 0.9rem;
+  font-size: 0.86rem;
+  max-width: 68ch;
+}
+
+/* Below this the nine columns stop being honest. The card scrolls sideways
+   inside itself rather than pushing the page along with it. */
+@media (max-width: 70rem) {
+  .card.table table {
+    min-width: 58rem;
+  }
+}

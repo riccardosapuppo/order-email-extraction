@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Orders from email</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="theme-color" content="#14181d" />
+  </head>
+  <body>
+    <app-root></app-root>
+
+    <!--
+      Evict any service worker left on this origin.
+
+      This application does not install one. A service worker outlives the build
+      that registered it: it stays attached to the ORIGIN, is reached before the
+      network, and serves the app it precached — and the port a development
+      server uses is the port every project uses in turn, so one project's
+      leftovers hijack the next. Costs nothing where there is none.
+    -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then(function (installed) {
+            return Promise.all(installed.map(function (one) { return one.unregister(); }));
+          })
+          .then(function (removed) {
+            if (!removed.some(Boolean) || typeof caches === 'undefined') return null;
+            return caches.keys().then(function (names) {
+              return Promise.all(names.map(function (name) { return caches.delete(name); }));
+            });
+          })
+          .catch(function () {
+            /* Private windows and blocked storage throw here. Nothing to do. */
+          });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,359 @@
+/* The look, and where it comes from.
+ *
+ * This is a tool for checking a claim: it says a number was read from these
+ * words, and it has to make that checkable at a glance. So the whole design is
+ * built around one gesture — a highlighter over a line of somebody's email —
+ * and everything else is held back so the marks are the only bright thing on
+ * the screen.
+ *
+ *   - **Ink on cool grey paper.** Not warm cream: this is correspondence being
+ *     examined, not a magazine.
+ *   - **Amber is the highlighter**, and it is used for nothing else. Where a
+ *     colour is needed for something that is not evidence — a stage, a link —
+ *     it is ink or grey.
+ *   - **The email is set in monospace**, because a plain-text email IS
+ *     monospace. Setting it in the interface's own face would be a small lie
+ *     about what is being shown.
+ *   - **Red is only for a reading that needs a person.** Nothing else is
+ *     allowed to be alarming, or the alarm stops meaning anything.
+ */
+
+:root {
+  --ink: #14181d;
+  --ink-soft: #4a545f;
+  --ink-faint: #7d8892;
+
+  --bg: #eef0f2;
+  --surface: #ffffff;
+  --raised: #f7f8f9;
+  --line: #dde1e5;
+  --hover: #e8ebee;
+
+  /* The highlighter. One colour, one job. */
+  --mark: #ffd24a;
+  --mark-strong: #ffb800;
+  --mark-ink: #4a3600;
+
+  --sure: #1d6b4f;
+  --sure-soft: #e3f0ea;
+  --likely: #7a5b12;
+  --likely-soft: #f8efd9;
+  --doubt: #a02c25;
+  --doubt-soft: #f8e6e4;
+
+  /* The mark. One pair of literal colours, named here so the check that keeps
+     the header and the favicon in step has something to compare against. */
+  --logo-ground: #14181d;
+  --logo-mark: #ffd24a;
+
+  --shadow: 0 1px 2px rgb(20 24 29 / 0.06), 0 4px 14px rgb(20 24 29 / 0.05);
+
+  --ui: system-ui, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --letter: ui-monospace, 'Cascadia Mono', 'SF Mono', 'JetBrains Mono', Menlo,
+    Consolas, 'Liberation Mono', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e7ebef;
+    --ink-soft: #a9b4be;
+    --ink-faint: #7b8691;
+
+    --bg: #0f1216;
+    --surface: #171b21;
+    --raised: #1c2128;
+    --line: #2a313a;
+    --hover: #222831;
+
+    --mark: #6b5410;
+    --mark-strong: #c99a13;
+    --mark-ink: #ffe9a8;
+
+    --sure: #56b98f;
+    --sure-soft: #163026;
+    --likely: #d3a84f;
+    --likely-soft: #2f2716;
+    --doubt: #e58d85;
+    --doubt-soft: #351f1d;
+
+    --shadow: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 640;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+h2 {
+  margin: 0 0 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+p {
+  margin: 0 0 0.6rem;
+}
+
+a {
+  color: var(--ink);
+  text-decoration-color: var(--ink-faint);
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration-color: var(--ink);
+}
+
+code {
+  font-family: var(--letter);
+  font-size: 0.85em;
+}
+
+.muted {
+  color: var(--ink-faint);
+}
+
+.lede {
+  margin: 0.35rem 0 0;
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  box-shadow: var(--shadow);
+}
+
+.card.table {
+  padding: 0.4rem 0;
+  overflow-x: auto;
+}
+
+.card.problem p {
+  margin: 0;
+  color: var(--doubt);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+
+.back {
+  margin: 0 0 0.8rem;
+  font-size: 0.88rem;
+}
+
+.banner {
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--doubt);
+  background: var(--doubt-soft);
+  color: var(--ink);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.92rem;
+}
+
+button.quiet {
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button.quiet:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+button.quiet:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+}
+
+/* ------------------------------------------------------------------ tables */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  text-align: left;
+  padding: 0.45rem 0.9rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+td small {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+}
+
+td small.warn {
+  color: var(--doubt);
+}
+
+/* A row whose weakest reading is a guess. Marked on the edge, not filled:
+   a filled row reads as selected. */
+tr.doubtful {
+  box-shadow: inset 3px 0 0 var(--doubt);
+}
+
+.tracking {
+  font-family: var(--letter);
+  font-size: 0.84rem;
+}
+
+/* -------------------------------------------------------------- confidence */
+
+.sure {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sure[data-band='sure'] {
+  background: var(--sure-soft);
+  color: var(--sure);
+}
+
+.sure[data-band='likely'] {
+  background: var(--likely-soft);
+  color: var(--likely);
+}
+
+.sure[data-band='doubtful'] {
+  background: var(--doubt-soft);
+  color: var(--doubt);
+}
+
+.sure.big {
+  padding: 0.45rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  text-align: right;
+}
+
+.sure.big small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.74rem;
+  opacity: 0.85;
+}
+
+/* ------------------------------------------------------------------ stages */
+
+.stage {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: var(--hover);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.stage[data-stage='shipped'] {
+  background: var(--sure-soft);
+  color: var(--sure);
+}
+
+.stage[data-stage='refused'] {
+  background: var(--doubt-soft);
+  color: var(--doubt);
+}
+
+.stage[data-stage='partly_confirmed'] {
+  background: var(--likely-soft);
+  color: var(--likely);
+}
+
+/* ------------------------------------------------------------ the marks */
+
+mark {
+  background: var(--mark);
+  color: var(--mark-ink);
+  padding: 0.05em 0.08em;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+mark.picked {
+  background: var(--mark-strong);
+  box-shadow: 0 0 0 2px var(--mark-strong);
+}
+
+mark:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -1,0 +1,149 @@
+/* The shell: a header that stays out of the way, and a page that gets the width.
+ *
+ * The evidence screen wants room — an email beside the values read out of it —
+ * so the container is wide and the chrome is thin. */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.top {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  width: min(84rem, 100%);
+  margin: 0 auto;
+  padding: 0.6rem 1.4rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
+  flex: none;
+}
+
+.wordmark {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.wordmark strong {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-size: 1rem;
+  line-height: 1.15;
+}
+
+/* The folder, under the name. There is no database here: the folder is the
+   whole of the system's memory, so it belongs in the identity. */
+.wordmark span {
+  font-family: var(--letter);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+nav {
+  display: flex;
+  gap: 0.15rem;
+}
+
+nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+nav a:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+nav a.here {
+  background: var(--hover);
+  color: var(--ink);
+  font-weight: 560;
+}
+
+/* How many messages are waiting for somebody. A count, not a warning colour:
+   these are refusals working as intended, not failures. */
+nav em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+}
+
+main {
+  flex: 1;
+  width: min(84rem, 100%);
+  margin: 0 auto;
+  padding: 1.6rem 1.4rem 3rem;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: min(84rem, 100%);
+  margin: 0 auto;
+  padding: 1.1rem 1.4rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 48rem) {
+  .bar {
+    padding: 0.55rem 1rem;
+    gap: 0.8rem;
+  }
+
+  .wordmark strong {
+    font-size: 0.94rem;
+  }
+
+  nav a {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.88rem;
+  }
+
+  main {
+    padding: 1.2rem 1rem 2.5rem;
+  }
+
+  footer {
+    padding: 1rem;
+    font-size: 0.76rem;
+  }
+}

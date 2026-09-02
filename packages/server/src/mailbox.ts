@@ -23,7 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { join, read, readEml, stageOf } from '@order-email/core';
+import { fieldsOf, join, read, readEml, stageOf } from '@order-email/core';
 import type { Message, Order, Reading } from '@order-email/core';
 
 export interface Entry {
@@ -142,13 +142,71 @@ export function summarise(order: Order) {
     tracking: shipment?.kind === 'shipment' ? (shipment.tracking?.value ?? null) : null,
 
     /**
-     * The weakest link in the chain, which is what decides whether a person
-     * should look — not the average, which would let one certain field hide
-     * three guesses.
+     * Two numbers, because there are two questions, and collapsing them into
+     * one is the habit this whole project is against.
+     *
+     *   `joined`  — is this the right order? How sure the system is that these
+     *               emails belong together.
+     *   `read`    — are these the right values? The weakest field in any of
+     *               them.
+     *
+     * Each is the WEAKEST link and not the average, which would let one certain
+     * value hide three guesses.
+     *
+     * They were one number for a while and it was wrong twice over. Reporting
+     * only the join put "100%, read outright" beside the one order in the
+     * mailbox with no reference of its own — the most fragile order on the
+     * screen, presented as certain, because nothing had been joined onto it
+     * wrongly, having never been joined at all. Then taking the minimum of both
+     * marked every order in the mailbox as doubtful, because one date read at
+     * 0.6 dragged an otherwise solid order under the line. A screen on which
+     * everything is flagged says nothing.
+     *
+     * A person needs to look if either is low, and needs to know WHICH — the
+     * two failures are repaired differently.
      */
-    confidence: order.readings.reduce((lowest, linked) => Math.min(lowest, linked.confidence), 1),
+    joined: order.readings.reduce((lowest, linked) => Math.min(lowest, linked.confidence), 1),
 
-    /** Every doubt anything raised about it, so they are in one place. */
-    doubts: order.readings.flatMap((linked) => [`${linked.fact.kind}: ${linked.why}`]),
+    read: order.readings.reduce(
+      (lowest, linked) =>
+        fieldsOf(linked.fact).reduce(
+          (weakest, { field }) => Math.min(weakest, field.confidence),
+          lowest
+        ),
+      1
+    ),
+
+    /**
+     * The single value most worth checking, and which message to check it in.
+     *
+     * This replaced a card labelled "doubts" that listed the grounds each email
+     * was joined on — "the same reference, 4471" and so on. Those are reasons to
+     * be confident, printed under a heading that said the opposite, and they
+     * repeated a column of the table below them. A heading that contradicts what
+     * is under it is worse than no heading.
+     *
+     * What a person actually wants from this screen is where to look first.
+     */
+    weakest: weakestOf(order),
   };
+}
+
+function weakestOf(order: Order) {
+  let worst: { path: string; value: unknown; confidence: number; file: string; rule: string } | null =
+    null;
+
+  for (const linked of order.readings) {
+    for (const { path, field } of fieldsOf(linked.fact)) {
+      if (worst && field.confidence >= worst.confidence) continue;
+      worst = {
+        path,
+        value: field.value instanceof Date ? field.value.toISOString() : field.value,
+        confidence: field.confidence,
+        file: linked.messageId,
+        rule: field.provenance.rule,
+      };
+    }
+  }
+
+  return worst;
 }

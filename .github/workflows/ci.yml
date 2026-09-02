@@ -1,0 +1,46 @@
+name: build and check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The minimum the README claims, so the claim is tested rather than
+      # asserted. Raising it here without raising it there is the drift this
+      # job exists to catch.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.11'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build every workspace
+        run: npm run build
+
+      - name: The rules, the parser, the joining, and what the interface is told
+        run: npm test
+
+      # The check that is not written behind the same door as the code: it reads
+      # the real .eml files rather than calling the functions with invented
+      # arguments. Five defects came out of it that the suite could not see.
+      - name: Read the real mailbox
+        run: npm run extract
+
+      - name: The header mark and the tab icon are one drawing
+        run: npm run check:mark
+
+      # Nothing here should reach the network, and a dependency that starts to
+      # is worth knowing about. Not a security control — an assertion about what
+      # this is.
+      - name: No runtime dependency beyond Express
+        run: |
+          echo "The server's dependencies:"
+          node -e "const p=require('./packages/server/package.json'); console.log(Object.keys(p.dependencies ?? {}).join(', ') || '(none)')"

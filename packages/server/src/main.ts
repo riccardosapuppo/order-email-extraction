@@ -22,7 +22,20 @@ function argument(name: string, fallback: string): string {
 }
 
 const folder = argument('folder', path.join(here, '..', '..', '..', '..', 'mail'));
-const port = Number(argument('port', '3000'));
+/**
+ * 3200, and not 3000.
+ *
+ * 3000 and 4200 are the ports every project on a machine uses in turn, and the
+ * time lost to that is not hypothetical: another project left a server on 3000
+ * and this one talked to it quite happily, answering questions about a system
+ * it has nothing to do with. Worse, a browser remembers things per ORIGIN —
+ * service workers, storage, permissions — so two projects sharing a port share
+ * state neither knows about.
+ *
+ * A port nobody else defaults to costs nothing and removes the whole class of
+ * confusion. The interface is on 4300 for the same reason.
+ */
+const port = Number(argument('port', '3200'));
 const host = argument('host', '127.0.0.1');
 
 const api = build({

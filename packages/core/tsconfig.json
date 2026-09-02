@@ -2,7 +2,17 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "build"
+    "outDir": "build",
+
+    // No .d.ts for the tests. Node's test runner walks the output folder and
+    // treats every `*.test.*` it finds as a test file — including the empty
+    // declaration file beside each compiled test. They pass, trivially, and the
+    // count goes up. A suite whose number is padded by files with nothing in
+    // them is a suite nobody can read a regression out of.
+    //
+    // The declarations this package DOES owe its consumers are emitted by
+    // tsconfig.types.json, which sees only src.
+    "declaration": false
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

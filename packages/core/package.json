@@ -6,9 +6,11 @@
   "type": "module",
   "main": "./build/src/index.js",
   "types": "./build/src/index.d.ts",
-  "exports": { ".": "./build/src/index.js" },
+  "exports": {
+    ".": "./build/src/index.js"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.json && cd build && node --test"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.types.json",
+    "test": "tsc -p tsconfig.json && tsc -p tsconfig.types.json && cd build && node --test"
   }
 }

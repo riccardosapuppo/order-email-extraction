@@ -1,0 +1,193 @@
+/* The email on the left, what was taken out of it on the right.
+ *
+ * Side by side and not one above the other: the whole point is reading a value
+ * against the words it came from, and a layout that makes you scroll between
+ * them has broken the comparison it exists for. Below 64rem there is no room
+ * for two columns and the message goes first — the evidence is the thing, the
+ * list is the index to it.
+ */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+/* ------------------------------------------------------------- the letter */
+
+.letter {
+  padding: 0;
+  overflow: hidden;
+}
+
+dl.envelope {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.25rem 0.9rem;
+  margin: 0;
+  padding: 0.9rem 1.1rem;
+  background: var(--raised);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+}
+
+dl.envelope dt {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+dl.envelope dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The message as it arrived: monospace, wrapped, and nothing else done to it.
+   A plain-text email IS monospace, and setting it in the interface's own face
+   would be a small lie about what is being shown. */
+pre.body {
+  margin: 0;
+  padding: 1.1rem;
+  font-family: var(--letter);
+  font-size: 0.84rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  max-height: 34rem;
+  overflow-y: auto;
+}
+
+.clips {
+  margin: 0;
+  padding: 0.7rem 1.1rem;
+  border-top: 1px solid var(--line);
+  background: var(--raised);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.clips span::before {
+  content: '📎 ';
+}
+
+/* ------------------------------------------------------------- what was read */
+
+.found .title {
+  margin: 0 0 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.found .title:not(:first-child) {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+ul.fields {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+ul.fields li {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+ul.fields li:hover {
+  background: var(--raised);
+}
+
+ul.fields li.picked {
+  border-color: var(--mark-strong);
+  background: var(--raised);
+  box-shadow: inset 3px 0 0 var(--mark-strong);
+}
+
+ul.fields li:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.what {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.value {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.how {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.quote {
+  font-family: var(--letter);
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  overflow-wrap: anywhere;
+}
+
+ul.because {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------ doubts */
+
+.card.doubts {
+  border-left: 3px solid var(--doubt);
+  margin-bottom: 1rem;
+}
+
+.card.doubts .title {
+  margin: 0 0 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--doubt);
+}
+
+.card.doubts ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 64rem) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+
+  pre.body {
+    max-height: none;
+  }
+}

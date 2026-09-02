@@ -1,0 +1,104 @@
+/* One order: three cards across, then the emails underneath. */
+
+.three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+  align-items: start;
+}
+
+h2.wide {
+  margin: 0 0 0.7rem;
+}
+
+table.lines {
+  font-size: 0.9rem;
+}
+
+table.lines td {
+  padding: 0.35rem 0.5rem 0.35rem 0;
+}
+
+table.lines td.qty {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  text-align: right;
+  width: 3rem;
+}
+
+table.lines td.unit {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 0.9rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+dt {
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+dd {
+  margin: 0;
+}
+
+ul.doubts {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+ul.doubts li {
+  margin-bottom: 0.3rem;
+}
+
+td.why {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  max-width: 26rem;
+}
+
+td.who {
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 62rem) {
+  .three {
+    grid-template-columns: 1fr;
+  }
+
+  .card.table table {
+    min-width: 46rem;
+  }
+}
+
+/* Where to look first: the one value most worth checking. */
+.weakest {
+  margin: 0 0 0.2rem;
+}
+
+.weakest .what {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.weakest strong {
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.small {
+  font-size: 0.84rem;
+}
