@@ -238,16 +238,38 @@ function isSupplier(message: Message, options: ReadOptions): boolean {
   return (options.supplierDomains ?? []).some((domain) => domain.toLowerCase() === from);
 }
 
-function referenceOf(subject: string, body: string, pattern: RegExp, rule: string) {
+function referenceOf(
+  subject: string,
+  body: string,
+  pattern: RegExp,
+  rule: string,
+  doubts?: string[]
+) {
   const inSubject = firstHit(subject, pattern);
+  const inBody = firstHit(body, pattern);
+
+  const subjectValue = inSubject ? clean(inSubject.groups[0] ?? '') : null;
+  const bodyValue = inBody ? clean(inBody.groups[0] ?? '') : null;
+
+  // Two references that disagree is a thing that happens, and it matters:
+  // somebody replies to Monday's thread to talk about a different order, and
+  // the subject still says Monday's. The subject is used, because that is what
+  // threads and what survives quoting — but the disagreement is reported
+  // rather than resolved silently, because whichever is chosen is wrong half
+  // the time.
+  if (doubts && subjectValue && bodyValue && subjectValue !== bodyValue) {
+    doubts.push(
+      `the subject says ${subjectValue} and the body says ${bodyValue}: taken as ${subjectValue}`
+    );
+  }
+
   if (inSubject) {
     // A reference in the subject line is the strongest signal there is: people
     // put it there so the reply threads, and it survives quoting intact.
-    return fromHit(clean(inSubject.groups[0] ?? ''), 0.95, 'subject' as const, inSubject, rule);
+    return fromHit(subjectValue ?? '', 0.95, 'subject' as const, inSubject, rule);
   }
 
-  const inBody = firstHit(body, pattern);
-  if (inBody) return fromHit(clean(inBody.groups[0] ?? ''), 0.8, 'body' as const, inBody, rule);
+  if (inBody) return fromHit(bodyValue ?? '', 0.8, 'body' as const, inBody, rule);
 
   return undefined;
 }
@@ -409,7 +431,7 @@ function asOrder(
   because: string[],
   doubts: string[]
 ): Reading {
-  const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference');
+  const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference', doubts);
   const items = itemsIn(body, doubts);
 
   const urgent = firstHit(`${subject}\n${body}`, URGENT);
@@ -458,8 +480,8 @@ function asConfirmation(
   doubts: string[]
 ): Reading {
   const both = `${subject}\n${body}`;
-  const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference');
-  const supplierOrderId = referenceOf(subject, body, SUPPLIER_REFERENCE, 'supplier-reference');
+  const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference', doubts);
+  const supplierOrderId = referenceOf(subject, body, SUPPLIER_REFERENCE, 'supplier-reference', doubts);
 
   // Named rather than taken from the end of the list: a reordering of STATUS
   // would otherwise silently change what an unreadable reply is assumed to be,
@@ -509,7 +531,7 @@ function asShipment(
   doubts: string[]
 ): Reading {
   const both = `${subject}\n${body}`;
-  const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference');
+  const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference', doubts);
 
   const trackingHit = firstHit(both, TRACKING);
   const carrierHit = firstHit(both, CARRIER);

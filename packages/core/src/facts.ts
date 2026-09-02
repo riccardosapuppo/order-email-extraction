@@ -60,8 +60,17 @@ export interface Item {
   readonly specs?: Field<string>;
 }
 
-/** Somebody ordering something. */
-export interface Order {
+/**
+ * Somebody ordering something.
+ *
+ * Named for the act rather than for the thing, because "Order" on its own is
+ * ambiguous here: link/join.ts has one too, and it means something else. This
+ * is *an email that places an order*; that is *an order, as the mailbox has
+ * revealed it across several messages*. Two lifetimes, two names — confusing
+ * them is how a shipment ends up attached to an email rather than to the
+ * order it belongs to.
+ */
+export interface OrderPlaced {
   readonly kind: 'order';
   readonly reference?: Field<string>;
   readonly items: readonly Item[];
@@ -91,7 +100,7 @@ export interface NothingUseful {
   readonly kind: 'acknowledgement' | 'billing' | 'marketing' | 'unknown';
 }
 
-export type Fact = Order | Confirmation | Shipment | NothingUseful;
+export type Fact = OrderPlaced | Confirmation | Shipment | NothingUseful;
 
 /**
  * One email, read.
