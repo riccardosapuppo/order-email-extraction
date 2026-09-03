@@ -50,8 +50,9 @@ unsure.
   `yarn` and `pnpm` will not read it as written.
 - **Nothing else.** No database, no Docker, no API key, no account anywhere. It
   reads a folder and serves it on localhost.
-- **About 300 MB** of `node_modules`, almost all of it the Angular build. The
-  server and the reading rules have no runtime dependencies but Express.
+- **265 MB** of `node_modules`, measured with `du -sh`, almost all of it the
+  Angular build. The server and the reading rules have no runtime dependencies
+  but Express.
 - **No network** after `npm install`. Nothing is sent anywhere, which is rather
   the point of a tool that reads your mail.
 - **To undo it:** delete the folder. Nothing is written outside it.
@@ -183,7 +184,7 @@ npm run check:mark     # the header mark and the tab icon are one drawing
 npm run screenshots    # retakes the pictures above
 ```
 
-`npm test` is 75 tests: 68 over the reading, the parser, the joining and the
+`npm test` is 81 tests: 74 over the reading, the parser, the joining and the
 segmentation, and 7 over what the interface is actually told about an order.
 That second suite was an empty folder for a while, so the package type-checked,
 ran nothing and reported success — a check that passes by finding nothing.
