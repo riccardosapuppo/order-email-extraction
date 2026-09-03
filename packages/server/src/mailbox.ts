@@ -61,11 +61,35 @@ export function readMailbox(folder: string, settings: Settings): Mailbox {
     .filter((name) => name.toLowerCase().endsWith('.eml'))
     .sort();
 
+  return mailboxOf(
+    files.map((name) => ({ name, raw: readOrExplain(path.join(full, name)) })),
+    settings,
+    full
+  );
+}
+
+/** One message as it arrived, with a name to call it by. */
+export interface Raw {
+  readonly name: string;
+  /** The message, or an Error if fetching this one failed. */
+  readonly raw: string | Error;
+}
+
+/**
+ * Raw messages into orders, whatever fetched them.
+ *
+ * A folder of `.eml` files and an IMAP account are two different problems with
+ * two different failure modes, and neither of them is what this project is
+ * about. They are adapters; this is where what they produce becomes the same
+ * thing, and the only place that knows how a message becomes an order.
+ */
+export function mailboxOf(raws: readonly Raw[], settings: Settings, from: string): Mailbox {
   const entries: Entry[] = [];
 
-  for (const file of files) {
+  for (const { name: file, raw } of raws) {
     try {
-      const raw = fs.readFileSync(path.join(full, file), 'utf8');
+      if (raw instanceof Error) throw raw;
+
       const message = readEml(raw, file);
       entries.push({
         file,
@@ -89,7 +113,22 @@ export function readMailbox(folder: string, settings: Settings): Mailbox {
 
   const { orders, unlinked } = join(entries.map(({ message, reading }) => ({ message, reading })));
 
-  return { folder: full, readAt: new Date(), entries, orders, unlinked };
+  return { folder: from, readAt: new Date(), entries, orders, unlinked };
+}
+
+/**
+ * A file that will not open is one bad message, not a bad mailbox.
+ *
+ * The error is carried through as a value rather than thrown, so it becomes the
+ * `doubts` line on one entry instead of ending the read. A mailbox is somebody
+ * else's export and one malformed message in it is ordinary.
+ */
+function readOrExplain(file: string): string | Error {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    return error as Error;
+  }
 }
 
 function unreadable(file: string): Message {

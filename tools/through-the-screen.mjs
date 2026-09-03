@@ -25,7 +25,8 @@
 
 import { createRequire } from 'node:module';
 
-const BASE = process.env.ORDERS_URL || 'http://localhost:4300';
+import { startTheStack } from './with-the-stack.mjs';
+
 const show = process.argv.includes('--show');
 
 let chromium;
@@ -49,6 +50,13 @@ function expect(what, condition, detail) {
     if (detail) console.log(`        ${detail}`);
   }
 }
+
+// The mailbox, the server and the interface, started by running the same
+// `npm start` a person runs -- and refused if any of those ports is already
+// busy, because a check that borrows a stranger is a check that can go green
+// having measured the wrong thing. See with-the-stack.mjs.
+const stack = await startTheStack();
+const BASE = stack.base;
 
 const browser = await chromium.launch({ channel: 'msedge', headless: !show });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
@@ -165,4 +173,5 @@ try {
   process.exitCode = 1;
 } finally {
   await browser.close();
+  await stack.stop();
 }

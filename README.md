@@ -42,6 +42,76 @@ unsure.
 
 ![The messages the system would not attach to any order, each saying what it was understood to be and why it stopped there](docs/for-a-person.png)
 
+## Where this came from, and what is missing
+
+The system this was rebuilt from did two things this one has to account for.
+
+### It fetched the mail itself
+
+It did not read a folder. It **connected to the company mailbox**, pulled what
+was new, and read that — and leaving that half out would make this look like a
+parser with a folder of fixtures beside it.
+
+So it is here, and it speaks the real protocol:
+[`packages/server/src/imap/client.ts`](packages/server/src/imap/client.ts) is an
+IMAP client written by hand, and what it talks to in this repository is an
+invented server holding the same eleven messages
+([`mail-server/imap.mjs`](mail-server/imap.mjs)) — because a public repository
+cannot ship somebody's mailbox credentials. The client does not know the
+difference: `--imap imaps://user@imap.example.com/INBOX` points it at a real one.
+
+By hand for the same reason the SNMP client in a sibling project is: the awkward
+part of IMAP is small, specific, and completely hidden by a library — and it is
+the part worth showing.
+
+**Literals.** IMAP does not escape a message body. It announces a length and
+sends exactly that many bytes, which may contain anything, `CRLF` included:
+
+```
+* 1 FETCH (UID 1 BODY[] {2847}
+From: ...                        <- 2847 bytes, read by COUNT
+)
+a4 OK FETCH completed
+```
+
+A reader that works line by line — the obvious way to read a text protocol —
+falls apart on the first message containing a blank line, which is every
+message. And the length is a count of **bytes**: `ü` is one character and two
+bytes, so a client counting characters stops short by exactly the number of
+extra bytes, losing the tail of the message, which is where nobody looks.
+
+That is not a story about somebody else. This client had that bug, the test
+below found it on its first run, and the fix is a comment in the file now: the
+socket is read as bytes so `{n}` can be counted, and decoded to text afterwards.
+
+```
+npm run test -w @order-email/server
+```
+
+Thirteen of those tests are the client against the invented server, with a
+message written to be awkward in the ways a real mailbox is: multi-byte
+characters, blank lines, a line that is a single dot, and a body larger than one
+socket chunk. **Both sources give the same answer** — reading the folder and
+fetching over IMAP produce identical orders, which is the only useful
+definition of an adapter.
+
+### A model read the messages
+
+The original asked a language model what each email meant. This does not, and
+the argument for that is above under **Rules, not a model** — it is the one
+design decision this project exists to make.
+
+What that costs is real and is not hidden: a message phrased in a way no rule
+anticipated is read as `unknown` and put in front of a person, where the model
+would have produced an answer. Sometimes that answer would have been right.
+
+What is gained is that every value can name the rule and the characters behind
+it, the same message reads the same way twice, and **when it does not
+understand, it says so**. A model asked which order an email belongs to will
+name one — plausibly, sometimes wrongly, and without ever mentioning that it was
+unsure. In a system where the output is a purchase order, that is the failure
+that costs money quietly.
+
 ## Before you start
 
 - **Node 20.11 or newer.** Checked by `engines` in `package.json` and by CI. The
@@ -57,26 +127,41 @@ unsure.
   the point of a tool that reads your mail.
 - **To undo it:** delete the folder. Nothing is written outside it.
 
-The browser-driven checks (`check:screen`, `screenshots`) want `playwright-core`
-on the path. They are checks, not dependencies, so they are not installed here;
-they say so and stop rather than pretending to have passed.
+The browser-driven checks (`check:screen`, `screenshots`) drive **Microsoft
+Edge**, already on the machine, through `playwright-core`. They say so and stop
+if it is not there, rather than reporting a pass they did not earn.
 
 ## Running it
 
 ```
 npm install
-npm start          # reads ./mail, serves the API on http://127.0.0.1:3200
-npm run web        # the interface on http://localhost:4300
+npm start
 ```
 
-Two commands because they are two processes. `npm start` builds every workspace
-and runs the server; `npm run web` runs the Angular development server, which
-proxies `/api` to it.
+One command. It builds, starts an **invented IMAP mailbox** holding the eleven
+messages, starts the server — which fetches them over the real protocol — starts
+the interface, and opens <http://localhost:4300>.
 
-Point it at a different folder:
+The browser is not opened in CI, with no terminal attached, or with `--no-open`
+(or `NO_OPEN=1`), and it says which of those happened.
+
+### The three parts, separately
 
 ```
-npm start -- --folder ../some-other-mailbox --suppliers acme.example,other.example
+npm run mailbox    # just the invented IMAP server, on 127.0.0.1:3993
+npm run server     # just the API, on http://127.0.0.1:3200
+npm run web        # just the interface, on http://localhost:4300
+```
+
+`npm run server` is not only for debugging: **pointing this at a real mailbox is
+the actual use**, and that must not require starting an invented one first.
+
+```
+# a folder of .eml files, which is what a mail client exports
+npm run server -- --folder ../some-other-mailbox --suppliers acme.example,other.example
+
+# a real account. IMAP_PASSWORD beats whatever is in the URL, and belongs there
+IMAP_PASSWORD=… npm run server -- --imap imaps://someone@imap.example.com/INBOX
 ```
 
 `--suppliers` is which domains are suppliers, so their replies are read as
@@ -179,13 +264,14 @@ state worth keeping.
 ```
 npm test               # the rules, the parser, the joining, the segmentation
 npm run extract        # reads the real .eml files and prints what it found
-npm run check:screen   # drives the interface with a browser
+npm run check:screen   # drives the interface with a browser, starting it itself
 npm run check:mark     # the header mark and the tab icon are one drawing
-npm run screenshots    # retakes the pictures above
+npm run screenshots    # retakes the pictures above, likewise
 ```
 
-`npm test` is 81 tests: 74 over the reading, the parser, the joining and the
-segmentation, and 7 over what the interface is actually told about an order.
+`npm test` is 94 tests: 74 over the reading, the parser, the joining and the
+segmentation, and 20 over the server — what the interface is actually told about
+an order, and the IMAP client, against the invented mailbox over a socket.
 That second suite was an empty folder for a while, so the package type-checked,
 ran nothing and reported success — a check that passes by finding nothing.
 

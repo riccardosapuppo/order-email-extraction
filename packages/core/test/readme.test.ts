@@ -70,7 +70,7 @@ function casesIn(workspace: string): number {
   return fs
     .readdirSync(from)
     .filter((one) => one.endsWith('.test.ts'))
-    .reduce((all, one) => all + (fs.readFileSync(path.join(from, one), 'utf8').match(/^\s*it\(/gm) ?? []).length, 0);
+    .reduce((all, one) => all + (fs.readFileSync(path.join(from, one), 'utf8').match(/^\s*(?:it|test)\(/gm) ?? []).length, 0);
 }
 
 describe('the numbers the README states about its own tests', () => {

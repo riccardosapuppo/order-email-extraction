@@ -16,7 +16,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-const BASE = process.env.ORDERS_URL || 'http://localhost:4300';
+import { startTheStack } from './with-the-stack.mjs';
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DOCS = path.join(here, '..', 'docs');
 
@@ -30,6 +31,13 @@ try {
 }
 
 fs.mkdirSync(DOCS, { recursive: true });
+
+// The mailbox, the server and the interface, started by running the same
+// `npm start` a person runs -- and refused if any of those ports is already
+// busy, because a check that borrows a stranger is a check that can go green
+// having measured the wrong thing. See with-the-stack.mjs.
+const stack = await startTheStack();
+const BASE = stack.base;
 
 const browser = await chromium.launch({ channel: 'msedge' });
 
@@ -98,4 +106,5 @@ try {
   process.exitCode = 1;
 } finally {
   await browser.close();
+  await stack.stop();
 }

@@ -16,15 +16,42 @@ import express, { type Express } from 'express';
 
 import { fieldsOf } from '@order-email/core';
 
-import { readMailbox, summarise, type Mailbox, type Settings } from './mailbox.js';
+import { mailboxOf, readMailbox, summarise, type Mailbox, type Settings } from './mailbox.js';
+import type { Source } from './source.js';
 
 export interface Options {
-  readonly folder: string;
+  /** A folder of .eml files, when there is no source. Kept for the tests. */
+  readonly folder?: string;
+
+  /** Where the mail comes from: a folder, or an IMAP mailbox. */
+  readonly source?: Source;
+
   readonly settings: Settings;
 }
 
-export function build({ folder, settings }: Options): Express {
-  let mailbox: Mailbox = readMailbox(folder, settings);
+/** The app, and the way to make it fetch again. */
+export interface Service {
+  readonly api: Express;
+  reload(): Promise<Mailbox>;
+}
+
+export function build({ folder, source, settings }: Options): Service {
+  // Something to answer with before anything has been fetched. Fetching over
+  // IMAP is a round trip, and a server that refuses every request until the
+  // first sync finishes is a server that looks broken while it is working.
+  let mailbox: Mailbox = folder && !source ? readMailbox(folder, settings) : empty(source?.describes ?? folder ?? '');
+
+  /** Fetch, and replace the snapshot. Never leaves a half-read mailbox behind. */
+  async function reload(): Promise<Mailbox> {
+    if (!source) {
+      mailbox = readMailbox(folder ?? '.', settings);
+      return mailbox;
+    }
+
+    const { raws, from } = await source.load();
+    mailbox = mailboxOf(raws, settings, from);
+    return mailbox;
+  }
 
   const api = express();
   api.disable('x-powered-by');
@@ -131,9 +158,19 @@ export function build({ folder, settings }: Options): Express {
     });
   });
 
-  api.post('/api/reload', (req, res) => {
-    mailbox = readMailbox(folder, settings);
-    res.json({ readAt: mailbox.readAt, messages: mailbox.entries.length, orders: mailbox.orders.length });
+  api.post('/api/reload', (req, res, next) => {
+    reload().then(
+      () => res.json({ readAt: mailbox.readAt, messages: mailbox.entries.length, orders: mailbox.orders.length }),
+      // A failed fetch leaves the previous snapshot in place, and says so.
+      // Emptying the orders because a mailbox was briefly unreachable would
+      // be the worst of both: no data, and no explanation.
+      (error: Error) =>
+        res.status(502).json({
+          error: 'the mail could not be fetched',
+          detail: error.message,
+          still_showing: mailbox.readAt,
+        })
+    );
   });
 
   api.use((req, res) => {
@@ -150,5 +187,15 @@ export function build({ folder, settings }: Options): Express {
     res.status(500).json({ error: 'something went wrong here' });
   });
 
-  return api;
+  return { api, reload };
+}
+
+/**
+ * A mailbox with nothing in it, for the moment before the first fetch.
+ *
+ * Not null, and not a thrown error: every endpoint reads the same shape, and
+ * one that has to check for absence is one that will forget to.
+ */
+function empty(from: string): Mailbox {
+  return { folder: from, readAt: new Date(0), entries: [], orders: [], unlinked: [] };
 }
