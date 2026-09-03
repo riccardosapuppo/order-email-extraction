@@ -1,0 +1,23 @@
+# Riscontri veri che non sono segreti, e perché.
+#
+# Ognuno è stato letto. Nessuno apre qualcosa che esiste.
+#
+# Questo progetto si collega a una casella di posta, quindi la parola che il
+# cancello cerca compare per forza: in una dichiarazione di tipo, in una
+# lettura di variabile d'ambiente, e in un valore inventato dentro una prova.
+# Nessuno dei tre è una credenziale. La casella a cui si collega davvero, qui,
+# è un server IMAP finto che accetta chiunque e ascolta solo su 127.0.0.1.
+#
+# Il punto della lettura da ambiente è proprio il contrario di un segreto nel
+# codice: IMAP_PASSWORD ha la precedenza su quello che c'è nell'indirizzo,
+# perché una password dentro una URL finisce nella cronologia della shell e
+# nell'elenco dei processi.
+#
+# Non vale per i nomi aziendali e per le chiavi vere: quelli bloccano comunque,
+# da qualunque file.
+#
+# Nota per chi scrive qui: le motivazioni non devono riprodurre il codice che
+# scusano. Questo file viene esaminato come tutti gli altri.
+
+packages/server/src/imap/client.ts    # il campo del tipo, e la lettura da ambiente che ha la precedenza sull'indirizzo
+packages/server/test/imap.test.ts     # un valore inventato, per provare che l'ambiente vince davvero
