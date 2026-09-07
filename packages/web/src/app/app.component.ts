@@ -46,8 +46,9 @@ import { LogoComponent } from './shell/logo.component';
 
     <footer>
       <span>
-        A demonstration. Every message in the folder is invented, and so is every
-        company in it.
+        A demonstration — an independent reconstruction of a production system I
+        designed and developed. Every message in the folder is invented, and so is
+        every company in it.
       </span>
       <span>Developed by Riccardo Sapuppo</span>
     </footer>
