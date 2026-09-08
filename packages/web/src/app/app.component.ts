@@ -46,11 +46,20 @@ import { LogoComponent } from './shell/logo.component';
 
     <footer>
       <span>
-        A demonstration — an independent reconstruction of a production system I
-        designed and developed. Every message in the folder is invented, and so is
-        every company in it.
+        A demonstration. It reconstructs a production system I designed and
+        developed; the original cannot be published, so this one was written
+        from scratch. Every message in the folder is invented, and so is every
+        company in it.
       </span>
-      <span>Developed by Riccardo Sapuppo</span>
+      <span>
+        Developed by
+        <a
+          href="https://github.com/riccardosapuppo"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Riccardo Sapuppo</a
+        >
+      </span>
     </footer>
   `,
   styleUrl: './app.component.css',
