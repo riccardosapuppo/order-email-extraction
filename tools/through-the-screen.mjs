@@ -25,6 +25,7 @@
 
 import { createRequire } from 'node:module';
 
+import { howToLaunch } from './lib/browser.mjs';
 import { startTheStack } from './with-the-stack.mjs';
 
 const show = process.argv.includes('--show');
@@ -58,7 +59,7 @@ function expect(what, condition, detail) {
 const stack = await startTheStack();
 const BASE = stack.base;
 
-const browser = await chromium.launch({ channel: 'msedge', headless: !show });
+const browser = await chromium.launch(howToLaunch({ headless: !show }));
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
 
 try {

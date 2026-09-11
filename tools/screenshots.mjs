@@ -16,6 +16,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
+import { howToLaunch } from './lib/browser.mjs';
 import { startTheStack } from './with-the-stack.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,7 +40,7 @@ fs.mkdirSync(DOCS, { recursive: true });
 const stack = await startTheStack();
 const BASE = stack.base;
 
-const browser = await chromium.launch({ channel: 'msedge' });
+const browser = await chromium.launch(howToLaunch());
 
 try {
   const page = await browser.newPage({

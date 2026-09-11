@@ -42,6 +42,30 @@ jobs:
       - name: The header mark and the tab icon are one drawing
         run: npm run check:mark
 
+      # The third layer, and until now it had never run anywhere.
+      #
+      # The README lists `npm run check:screen` among the checks, and it was the
+      # only one this job did not run: it drives a browser, it was written
+      # against the Edge that is on a desk, and there is no Edge here. So it
+      # passed on one machine, on the days somebody remembered, and a check
+      # nobody runs defends nothing.
+      #
+      # It stays out of the dependencies -- the README promises Node and
+      # nothing else, and `npm install` fetching 300 MB of browser would make
+      # that false for everybody who only wants to run the thing. Here the
+      # runner installs one, uses it, and is thrown away.
+      - name: Get a browser to drive
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+
+      - name: Follow a value back to its words, through the screen
+        # Empty means the browser Playwright brought, rather than the Edge this
+        # repository expects on a desk. Empty and unset are not the same thing.
+        env:
+          PLAYWRIGHT_CHANNEL: ""
+        run: npm run check:screen
+
       # Nothing here should reach the network, and a dependency that starts to
       # is worth knowing about. Not a security control — an assertion about what
       # this is.

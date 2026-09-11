@@ -292,6 +292,16 @@ body character for character: the marks are drawn by cutting the text at every
 span boundary and reassembling it, and a defect there does not throw, it quietly
 drops characters out of somebody's email.
 
+It runs in CI, which it did not until recently. It drives the Edge that is
+already on a desk rather than fetching a browser, because the list above this
+one promises Node and nothing else and `npm install` pulling down 300 MB would
+make that false for everybody who only wants to run the thing — and it exits
+**2**, not 1, when there is no Playwright to drive, because "could not run" and
+"failed" are different answers. The consequence was that it ran on one machine,
+on the days somebody remembered. The runner now installs a browser, sets
+`PLAYWRIGHT_CHANNEL` to empty so Playwright uses the one it brought, and is
+thrown away afterwards.
+
 It found two things worth having:
 
 - `/messages/01-order.eml` worked from inside the application and answered
