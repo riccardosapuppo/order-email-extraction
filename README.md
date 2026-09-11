@@ -129,7 +129,9 @@ that costs money quietly.
 
 The browser-driven checks (`check:screen`, `screenshots`) drive **Microsoft
 Edge**, already on the machine, through `playwright-core`. They say so and stop
-if it is not there, rather than reporting a pass they did not earn.
+if it is not there, rather than reporting a pass they did not earn. In CI, where
+there is no Edge and a machine to throw away afterwards, the runner installs a
+browser and `PLAYWRIGHT_CHANNEL=""` tells them to use that one instead.
 
 ## Running it
 

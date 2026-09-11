@@ -55,6 +55,25 @@ export function against(argv = process.argv) {
   return at !== -1 && argv[at + 1] ? argv[at + 1] : null;
 }
 
+/**
+ * Signal the child's whole process group.
+ *
+ * A negative pid means the group rather than the process, which is the entire
+ * reason the child is started in one. It throws when the group has already
+ * gone, which is the ordinary case at the end of a run and not a problem.
+ */
+function signalTheGroup(child, signal) {
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
 function free(port) {
   return new Promise((done) => {
     const socket = net.createConnection({ host: '127.0.0.1', port });
@@ -97,6 +116,11 @@ export async function startTheStack({ quiet = true } = {}) {
     // `.cmd` files need a shell since Node closed a command-injection hole in
     // how Windows parses their arguments. Every argument here is written above.
     shell: process.platform === 'win32',
+
+    // Its own process group, everywhere but Windows, so that stopping it can
+    // signal the whole tree at once rather than only the shell at the top of
+    // it. See stop(), below, for what happened when it could not.
+    detached: process.platform !== 'win32',
   });
 
   child.stdout.setEncoding('utf8');
@@ -111,19 +135,75 @@ export async function startTheStack({ quiet = true } = {}) {
   child.stdout.on('data', watch);
   child.stderr.on('data', watch);
 
+  /**
+   * The tree, not the process.
+   *
+   * `npm start` is a shell that starts a launcher that starts three things, one
+   * of them a development server with a file watcher under it. Killing the
+   * shell alone leaves every one of them running -- and because their output is
+   * piped to this process, this process then never exits either.
+   *
+   * That last sentence is not a prediction. This branch used to be `child.kill()`
+   * directly underneath a comment saying the tree was what mattered, and it was
+   * only ever exercised on Windows, where taskkill does the tree and hid it. The
+   * first run on a Linux machine printed all sixteen checks as passing, printed
+   * its closing line, and then sat there until the job was cancelled fifteen
+   * minutes later with `ng serve` and `esbuild` still listed as orphans.
+   *
+   * A comment that declares the right intent does not carry it out.
+   */
   const stop = async () => {
     if (child.exitCode === null && child.signalCode === null) {
-      // The tree: `npm start` is a shell that starts a launcher that starts
-      // three things. Killing the shell alone leaves all three.
       if (process.platform === 'win32') {
         spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }).on('error', () => child.kill());
       } else {
-        child.kill();
+        signalTheGroup(child, 'SIGTERM');
       }
     }
 
-    await new Promise((done) => setTimeout(done, 1200));
+    if (await theirPortsAreFreeWithin(6000)) return;
+
+    // Nothing let go, so stop them by name. `npm start` says the pid of each of
+    // the three it starts, which is the only handle that survives an
+    // intermediate shell exiting and taking the tree walk with it.
+    for (const pid of said.matchAll(/\[both\] .+ is pid (\d+)/g)) {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/PID', pid[1], '/T', '/F'], { stdio: 'ignore' }).on('error', () => {});
+      } else {
+        try {
+          process.kill(Number(pid[1]), 'SIGKILL');
+        } catch {
+          /* already gone */
+        }
+      }
+    }
+
+    if (process.platform !== 'win32') signalTheGroup(child, 'SIGKILL');
+
+    if (await theirPortsAreFreeWithin(4000)) return;
+
+    // It never used to say this, because it never used to look. It killed
+    // something, waited a second and a bit, and returned as though that had
+    // worked -- and the next `npm start` refused to run, correctly and
+    // confusingly, against a leftover of the run that said it had finished.
+    const held = [];
+    for (const { port, what } of PORTS) if (!(await free(port))) held.push(`${port}, where ${what} goes`);
+
+    console.error(`\nThe stack would not let go of ${held.join('; ')}.`);
+    console.error('The next run will refuse to start rather than measure whatever that is.');
   };
+
+  /** Whether the three ports this took are back, within the time given. */
+  async function theirPortsAreFreeWithin(ms) {
+    const until = Date.now() + ms;
+
+    for (;;) {
+      const all = await Promise.all(PORTS.map(({ port }) => free(port)));
+      if (all.every(Boolean)) return true;
+      if (Date.now() > until) return false;
+      await new Promise((done) => setTimeout(done, 250));
+    }
+  }
 
   try {
     await untilItAnswers(`${WEB}/api/health`, 180_000, () => {

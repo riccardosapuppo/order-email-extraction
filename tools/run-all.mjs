@@ -66,9 +66,30 @@ await untilItSays(server, /\/api\/orders/, 20_000, 'the server');
 
 // The Angular development server, which proxies /api to the one above. Started
 // through npm because its binary lives in the workspace, not here.
-const web = start('the interface', null, ['run', 'web'], { npm: true });
+start('the interface', null, ['run', 'web'], { npm: true });
 
-await untilItSays(web, /localhost:4300|Local:\s+http/, 120_000, 'the interface');
+/*
+ * Waited for by asking it, not by reading what it says about itself.
+ *
+ * This used to watch the development server's output for a line matching
+ * `localhost:4300` or `Local:  http`. On this machine that line never matched
+ * inside the two minutes allowed, so the wait ended by timing out, said
+ * "carrying on anyway", and opened the browser — two minutes after the command
+ * was typed, on a page that had been ready for most of them. A person watching
+ * a terminal for two minutes concludes that it does not open a browser, and
+ * they are not wrong about the experience.
+ *
+ * A readiness check that can pass by timing out is not a readiness check. This
+ * asks for a page through the interface's own proxy, which is the whole path:
+ * the development server compiled, the proxy configured, the API answering.
+ * None of the three can confirm that on its own, and the browser opens the
+ * moment it is true rather than when a pattern happens to match.
+ */
+const ready = await untilItAnswers(`${WEB}/api/health`, 180_000);
+
+if (!ready) {
+  console.error(`[both] ${WEB} never answered within 180s. Opening it anyway; it may not be ready.`);
+}
 
 const browser = openInABrowser(WEB, { argv });
 console.error(`[both] ${browser.opened ? `opening ${WEB}` : `not opening a browser: ${browser.why}`}`);
@@ -100,10 +121,24 @@ function start(name, script, args, { npm = false } = {}) {
     cwd: root,
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: npm && process.platform === 'win32',
+
+    // Its own process group, everywhere but Windows, so that Ctrl+C can take
+    // down the whole tree and not just the shell at the top of it. Ctrl+C
+    // reaches this process directly and it stops them itself, below.
+    detached: process.platform !== 'win32',
   });
 
   label(child.stdout, name);
   label(child.stderr, name);
+
+  // Said out loud, in a shape another program can read.
+  //
+  // Whatever started this has to be able to stop it, and on Windows the only
+  // handle it has is this process, whose own tree walk breaks as soon as an
+  // intermediate shell exits -- which is how two of these were once left
+  // listening after a run that reported itself finished. Naming each one means
+  // it can be stopped by name rather than by inference.
+  console.error(`[both] ${name} is pid ${child.pid}`);
 
   child.on('error', (error) => {
     console.error(`[${name}] would not start: ${error.message}`);
@@ -144,6 +179,29 @@ function label(stream, name) {
   });
 }
 
+/**
+ * Poll until something answers, or until the time runs out.
+ *
+ * @returns {Promise<boolean>} whether it answered, so the caller can say which
+ *   happened. A wait that cannot tell "ready" from "gave up" is how a timeout
+ *   gets reported as success.
+ */
+async function untilItAnswers(url, ms) {
+  const until = Date.now() + ms;
+
+  for (;;) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return true;
+    } catch {
+      /* not up yet */
+    }
+
+    if (Date.now() > until) return false;
+    await new Promise((done) => setTimeout(done, 500));
+  }
+}
+
 function untilItSays(child, pattern, ms, what) {
   return new Promise((done) => {
     let seen = '';
@@ -182,12 +240,24 @@ function closeEverything(code) {
     // The tree, not the process. `npm run web` is a shell that starts Angular,
     // which starts a watcher; killing the shell alone leaves a development
     // server holding 4300 that the next run fights with.
+    //
+    // This said the same thing before and then killed the one process on every
+    // system but Windows, where taskkill does the tree and hid it. A negative
+    // pid is the process group, which is why each of them is started in one.
     if (process.platform === 'win32') {
       spawn('taskkill', ['/PID', String(one.child.pid), '/T', '/F'], { stdio: 'ignore' }).on('error', () => {
         one.child.kill();
       });
     } else {
-      one.child.kill();
+      try {
+        process.kill(-one.child.pid, 'SIGTERM');
+      } catch {
+        try {
+          one.child.kill();
+        } catch {
+          /* already gone */
+        }
+      }
     }
   }
 
