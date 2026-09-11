@@ -43,6 +43,24 @@ import { day as asDay, shortWhen } from '../shell/dates';
           by anybody: every value was read out of a message, and every one of them
           can be pointed back at the words it came from.
         </p>
+
+        <!--
+          Which reader produced all of this, said on the page.
+
+          It was in the README and in the flag that chooses it, and nowhere a
+          person looking at the running thing could see. A page whose whole
+          argument is about how its values were obtained has to say which way it
+          obtained them -- and, while the answer is "the rules", that there is
+          another way to obtain them and it is held to the same standard.
+        -->
+        <p class="lede reader">
+          Read by <strong>{{ readBy() }}</strong>.
+          @if (couldBeAModel()) {
+            A language model can read them instead —
+            <code>npm start -- --reader model</code> — and every value it produces
+            is checked the same way: against the words in the message, or dropped.
+          }
+        </p>
       </div>
 
       <button type="button" class="quiet" (click)="reload()" [disabled]="loading()">
@@ -166,6 +184,8 @@ export class OrdersComponent {
   readonly readAt = signal<string | null>(null);
   readonly unlinked = signal(0);
   readonly counted = signal('a mailbox');
+  readonly readBy = signal('the rules');
+  readonly couldBeAModel = signal(true);
   readonly loading = signal(true);
   readonly problem = signal<string | null>(null);
 
@@ -206,6 +226,8 @@ export class OrdersComponent {
       next: (answer) => {
         this.orders.set(answer.orders);
         this.readAt.set(answer.readAt);
+        this.readBy.set(answer.readBy);
+        this.couldBeAModel.set(answer.couldBeAModel);
         this.loading.set(false);
       },
       error: () => {

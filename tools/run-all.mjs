@@ -34,6 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { openInABrowser } from './open-a-browser.mjs';
+import { WHAT_GOES_WHERE, clearIfOurs } from './lib/ports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
@@ -44,6 +45,39 @@ const wantsAFolder = argv.includes('--folder') || argv.includes('--imap');
 const WEB = 'http://localhost:4300';
 const running = [];
 let closing = false;
+
+/*
+ * The ports this needs, taken back from earlier runs of this same project.
+ *
+ * It used to stop here and say the port was busy. That is safe and useless: the
+ * usual thing on it is a mailbox this project started and did not let go of, and
+ * telling somebody to go and find it is telling them to do the program's job.
+ *
+ * It does not kill whatever is there either. 3993, 3200 and 4300 are ports like
+ * any others, and a tool that frees a port by killing the process on it will one
+ * day kill something somebody was using. So each one is asked what it is, and
+ * only something that answers with this project's own words is stopped. See
+ * tools/lib/ports.mjs.
+ */
+for (const one of WHAT_GOES_WHERE) {
+  // A caller who named their own mailbox is not asking for the invented one, so
+  // its port is none of this run's business.
+  if (wantsAFolder && one.port === 3993) continue;
+
+  const { cleared, why } = await clearIfOurs(one);
+
+  if (cleared) {
+    if (why !== 'nothing was on it') console.error(`[both] ${why}`);
+    continue;
+  }
+
+  console.error(`[both] ${one.port} is taken, where ${one.what} goes: ${why}.`);
+  console.error('[both] Nothing was started. Stop it, or start this somewhere else:');
+  console.error(`[both]   npm run server -- --port 3201`);
+
+  // 2, not 1: this did not fail, it could not run.
+  process.exit(2);
+}
 
 /**
  * The invented mailbox, unless the caller named a source of their own.

@@ -128,6 +128,19 @@ export interface Health {
   forAPerson: number;
 }
 
+/** What `GET /api/orders` answers with. */
+export interface TheOrders {
+  readAt: string;
+
+  /** Which reader produced every value below, in words, for the page to say. */
+  readBy: string;
+
+  /** Whether the other reader is still an option, so the page can mention it. */
+  couldBeAModel: boolean;
+
+  orders: OrderSummary[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
@@ -136,8 +149,8 @@ export class ApiService {
     return this.http.get<Health>('/api/health');
   }
 
-  orders(): Observable<{ readAt: string; orders: OrderSummary[] }> {
-    return this.http.get<{ readAt: string; orders: OrderSummary[] }>('/api/orders');
+  orders(): Observable<TheOrders> {
+    return this.http.get<TheOrders>('/api/orders');
   }
 
   order(key: string): Observable<{ order: OrderSummary; messages: LinkedMessage[] }> {

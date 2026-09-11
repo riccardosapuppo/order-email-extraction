@@ -23,29 +23,33 @@
  * exists only for checks — and a config only checks use is a config that drifts
  * from the one people use.
  *
- * So this takes 3993, 3200 and 4300, and **refuses to run if any of them is
- * already busy**. That is the same guarantee by a different route: it either
+ * So this takes 3993, 3200 and 4300, and asks what is on each of them before it
+ * takes it. A leftover of this project -- the usual reason one is busy -- is
+ * stopped. Anything else is left alone, named, and the run refuses. It either
  * owns what it is testing or says it cannot test anything. What it never does
- * is quietly measure a stranger.
+ * is quietly measure a stranger, and what it no longer does is give up because
+ * of a mailbox this repository started itself.
  *
  * It starts them by running `npm start`: the same command a person runs, which
  * is the only version of this that cannot drift from what it is checking.
  */
 
 import { spawn } from 'node:child_process';
-import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { WHAT_GOES_WHERE, clearIfOurs, free } from './lib/ports.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
 
-/** What `npm start` binds, and what this therefore needs to itself. */
-export const PORTS = [
-  { port: 3993, what: 'the invented mailbox' },
-  { port: 3200, what: 'the server' },
-  { port: 4300, what: 'the interface' },
-];
+/**
+ * What `npm start` binds, and what this therefore needs to itself.
+ *
+ * The same list the start command uses, including the words each of the three
+ * answers with, so that both agree about what counts as ours.
+ */
+export const PORTS = WHAT_GOES_WHERE;
 
 export const WEB = 'http://localhost:4300';
 
@@ -74,21 +78,6 @@ function signalTheGroup(child, signal) {
   }
 }
 
-function free(port) {
-  return new Promise((done) => {
-    const socket = net.createConnection({ host: '127.0.0.1', port });
-    socket.once('connect', () => {
-      socket.destroy();
-      done(false);
-    });
-    socket.once('error', () => done(true));
-    socket.setTimeout(1500, () => {
-      socket.destroy();
-      done(true);
-    });
-  });
-}
-
 /**
  * @returns {Promise<{base: string, stop: () => Promise<void>, mine: boolean}>}
  */
@@ -100,10 +89,24 @@ export async function startTheStack({ quiet = true } = {}) {
     return { base: already, mine: false, stop: async () => {} };
   }
 
-  for (const { port, what } of PORTS) {
-    if (await free(port)) continue;
+  /*
+   * The same question the start command asks: what is on the port, rather than
+   * whether anything is.
+   *
+   * A leftover of this project is stopped -- it is the usual reason a check
+   * cannot start, and refusing to run because of a mailbox this repository
+   * started itself is a check that needs a person to do its tidying. Anything
+   * else is left alone and named, because measuring a stranger is the one
+   * failure this file exists to prevent.
+   */
+  for (const one of PORTS) {
+    const { cleared, why } = await clearIfOurs(one);
+    if (cleared) {
+      if (why !== 'nothing was on it') console.error(why);
+      continue;
+    }
 
-    console.error(`Something is already listening on 127.0.0.1:${port}, where ${what} goes.`);
+    console.error(`127.0.0.1:${one.port} is taken, where ${one.what} goes: ${why}.`);
     console.error('This check will not run against it: it has no way to know what that is.');
     console.error('Stop it and try again, or point this at it on purpose:');
     console.error(`  npm run check:screen -- --against ${WEB}`);

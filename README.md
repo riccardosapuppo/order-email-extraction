@@ -231,6 +231,20 @@ machine uses in turn, and a browser remembers things per origin (service
 workers, storage, permissions), so two projects sharing a port share state
 neither knows about. An hour went into learning that.
 
+**A busy port is asked what it is, not simply refused.** Starting used to stop
+and say the port was taken, which is safe and useless: the usual thing on it is
+a mailbox this project started ten minutes earlier and did not let go of, and
+telling somebody to go and find it is telling them to do the program's job. It
+does not kill whatever is there either — a tool that frees a port by killing the
+process on it will one day kill something somebody was using.
+
+So each of the three is asked. The invented mailbox greets an IMAP client with
+its own name, the server answers `/api/health` with the name of this project,
+and the interface serves a page with this project's title in it. Something that
+answers with the right words is a leftover of this project and is stopped; any
+other answer is a stranger, and the run says what it saw and stops instead of
+touching it. A port that answers is not proof that what answered is yours.
+
 ## The eleven messages
 
 `mail/` holds a mailbox built to exercise the cases that are actually hard.

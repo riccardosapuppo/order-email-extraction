@@ -67,6 +67,16 @@ export function build({ folder, source, settings }: Options): Service {
   api.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
+
+      /*
+       * Which program this is, and not only that something answered.
+       *
+       * 3200 is a port like any other and the next thing to take it will also
+       * answer `{"status":"ok"}`. `npm start` stops what is on its ports only
+       * when what is on them says this — so a leftover of this project is
+       * cleared and a stranger is left alone and named. See tools/lib/ports.mjs.
+       */
+      what: 'order-email-extraction',
       folder: mailbox.folder,
       readAt: mailbox.readAt,
       messages: mailbox.entries.length,
@@ -79,6 +89,20 @@ export function build({ folder, source, settings }: Options): Service {
   api.get('/api/orders', (req, res) => {
     res.json({
       readAt: mailbox.readAt,
+
+      /*
+       * Who read them, sent so the interface can say it.
+       *
+       * Which reader is in use was, for a while, visible only in the README and
+       * in the flag that chooses it. Somebody looking at the running thing
+       * could not tell that a model was an option at all, and the values
+       * themselves only say so once a model has actually read one. A page that
+       * argues about how its values were obtained should say which way it
+       * obtained them.
+       */
+      readBy: settings.reader?.describes ?? 'the rules in extract/rules.ts',
+      couldBeAModel: !settings.reader || settings.reader.name === 'rules',
+
       orders: mailbox.orders.map(summarise),
     });
   });
