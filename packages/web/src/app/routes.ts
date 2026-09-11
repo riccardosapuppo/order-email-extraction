@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
 /**
- * Four screens, and no guards.
+ * Five screens, and no guards.
  *
  * There is nothing to guard. This reads a folder on the machine it runs on and
  * has no accounts, no sessions and no write surface beyond "read the folder
@@ -21,6 +21,10 @@ export const ROUTES: Routes = [
   {
     path: 'message',
     loadComponent: () => import('./message/message.component').then((m) => m.MessageComponent),
+  },
+  {
+    path: 'reading',
+    loadComponent: () => import('./reading/reading.component').then((m) => m.ReadingComponent),
   },
   {
     path: 'for-a-person',

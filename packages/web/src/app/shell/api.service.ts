@@ -138,6 +138,20 @@ export interface Health {
   forAPerson: number;
 }
 
+/** What `POST /api/reader` answers with: the state, and what that reading produced. */
+export interface ReaderNow {
+  readBy: string;
+  readerName: string;
+  couldBeAModel: boolean;
+  readAt: string;
+  messages: number;
+  orders: number;
+  forAPerson: number;
+
+  /** Values the reader would not stand behind. Comparable between the two. */
+  doubts: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
@@ -154,6 +168,18 @@ export class ApiService {
     return this.http.get<{ order: OrderSummary; messages: LinkedMessage[] }>(
       `/api/orders/${encodeURIComponent(key)}`
     );
+  }
+
+  /**
+   * Switch reader, and read the mailbox again with it.
+   *
+   * The key goes to a server on this machine and no further. Nothing in this
+   * application stores it: not localStorage, not a cookie, not a query string.
+   * Reload the page and it is gone from here; switch back to the rules and it
+   * is gone from the server too.
+   */
+  useReader(asked: { reader: 'rules' | 'model'; key?: string; model?: string }): Observable<ReaderNow> {
+    return this.http.post<ReaderNow>('/api/reader', asked);
   }
 
   message(file: string): Observable<MessageDetail> {

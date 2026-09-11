@@ -82,6 +82,16 @@ try {
   await page.screenshot({ path: path.join(DOCS, 'picked.png') });
   say('picked.png');
 
+  // --------------------------------------------------------- who is reading
+  //
+  // Taken because a capability described only in a README is a capability
+  // nobody knows about, which is the same mistake this screen exists to
+  // correct.
+  await page.goto(`${BASE}/reading`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(DOCS, 'reading.png') });
+  say('reading.png');
+
   // ------------------------------------------------------------ the refusals
   await page.goto(`${BASE}/for-a-person`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(800);

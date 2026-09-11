@@ -131,6 +131,20 @@ could not have read is dropped rather than stored with a number beside it.
 The rules are still the default and still the only reader the checks use,
 because a check whose answer can change on its own is not a check.
 
+**And it is switched in the interface, not by restarting.** For a while which
+reader ran was decided by a command-line flag and described here, which is the
+same as not having the second one for anybody who opens this to see what it
+does: they would have to already know it existed, stop it, and start it again
+with different arguments. A capability you can only reach by restarting is a
+capability nobody sees.
+
+![The screen where the reader is chosen: the rules and a language model side by side, what each one costs, and the field for a key](docs/reading.png)
+
+The key goes to the server on this machine and no further. It is not stored in
+the browser and not written to disk: it is held for the life of the process, and
+switching back to the rules forgets it. Reading these eleven messages costs a
+few pennies.
+
 ## Before you start
 
 - **Node 20.11 or newer.** Checked by `engines` in `package.json` and by CI. The
@@ -145,8 +159,11 @@ because a check whose answer can change on its own is not a check.
 - **265 MB** of `node_modules`, measured with `du -sh`, almost all of it the
   Angular build. The server and the reading rules have no runtime dependencies
   but Express.
-- **No network** after `npm install`. Nothing is sent anywhere, which is rather
-  the point of a tool that reads your mail.
+- **No network** after `npm install`, unless you ask for one. Nothing is sent
+  anywhere while the rules are reading, which is rather the point of a tool that
+  reads your mail. Switching to the model on the reading screen sends each
+  message to Anthropic, and that screen says so before you do it — it is the one
+  thing here that leaves the machine, and it takes asking twice.
 - **To undo it:** delete the folder. Nothing is written outside it.
 
 The browser-driven checks (`check:screen`, `screenshots`) drive **Microsoft
@@ -348,11 +365,12 @@ npm run check:mark     # the header mark and the tab icon are one drawing
 npm run screenshots    # retakes the pictures above, likewise
 ```
 
-`npm test` is 116 tests: 89 over the reading, the parser, the joining, the
-segmentation and what a model is allowed to get away with, and 27 over the
+`npm test` is 122 tests: 89 over the reading, the parser, the joining, the
+segmentation and what a model is allowed to get away with, and 33 over the
 server — what the interface is actually told about an order, whether every span
-points at the words it claims, the model client with the network stubbed out,
-and the IMAP client against the invented mailbox over a socket.
+points at the words it claims, switching reader over HTTP, the model client with
+the network stubbed out, and the IMAP client against the invented mailbox over
+a socket.
 That second suite was an empty folder for a while, so the package type-checked,
 ran nothing and reported success, a check that passes by finding nothing.
 

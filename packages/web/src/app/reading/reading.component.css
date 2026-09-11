@@ -1,0 +1,192 @@
+/* Two readers, side by side, with the one that is running marked.
+ *
+ * Side by side because the screen exists to be a comparison: the same eleven
+ * messages, read two ways, and what each costs. Stacked they read as two
+ * unrelated panels and the comparison has to be held in the head. */
+
+.back {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+}
+
+.head {
+  margin-bottom: 1.4rem;
+}
+
+.head h1 {
+  margin: 0 0 0.4rem;
+}
+
+.lede {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--ink-soft);
+}
+
+.readers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr));
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.card.reader {
+  padding: 1.2rem 1.3rem;
+}
+
+/* The one that is reading. A left edge rather than a wash: the card is a lot of
+   text and a tinted background under it makes the text harder to read for the
+   sake of a fact one word already carries. */
+.card.reader.on {
+  border-left: 3px solid var(--sure);
+}
+
+.card.reader > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.card.reader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.badge.on {
+  font-size: 0.72rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  background: var(--sure-soft);
+  color: var(--sure);
+  white-space: nowrap;
+}
+
+.card.reader p {
+  margin: 0 0 0.8rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.traits {
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.traits li {
+  margin-bottom: 0.22rem;
+}
+
+form {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+label {
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+label em {
+  font-style: normal;
+  color: var(--ink-faint);
+}
+
+input {
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+input:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+button {
+  justify-self: start;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.4rem;
+  background: var(--ink);
+  color: var(--surface);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button:not(:disabled):hover {
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
+}
+
+.fine {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+
+.card.problem {
+  margin-bottom: 1.1rem;
+  border-left: 3px solid var(--doubt);
+  background: var(--doubt-soft);
+  padding: 0.9rem 1.1rem;
+}
+
+.card.problem p {
+  margin: 0;
+  color: var(--doubt);
+}
+
+.card.outcome {
+  margin-top: 1.1rem;
+  padding: 1.1rem 1.3rem;
+}
+
+.card.outcome h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+}
+
+.card.outcome dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 2.2rem;
+  margin: 0 0 0.9rem;
+}
+
+.card.outcome dt {
+  font-size: 0.76rem;
+  color: var(--ink-faint);
+  text-transform: none;
+}
+
+.card.outcome dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.card.outcome p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  max-width: 68ch;
+}

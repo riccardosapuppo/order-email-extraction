@@ -152,7 +152,7 @@ try {
   // ------------------------------------------------ a link somebody was sent
   console.log('\nAnd the addresses work from outside the application');
 
-  for (const where of ['/orders', `/orders/${encodeURIComponent(key)}`, `/message?of=${encodeURIComponent(file)}`, '/for-a-person']) {
+  for (const where of ['/orders', `/orders/${encodeURIComponent(key)}`, `/message?of=${encodeURIComponent(file)}`, '/for-a-person', '/reading']) {
     const response = await page.goto(`${BASE}${where}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
     expect(
@@ -161,6 +161,35 @@ try {
       `answered ${response?.status()}`
     );
   }
+
+  // ---------------------------------------------------------- who is reading
+  //
+  // The screen that makes the second reader reachable without a restart. No key
+  // is used and none is needed: what is checked is that the screen says which
+  // reader is running, that asking for the model without a key is refused with
+  // the reason on the page rather than in a console nobody opens, and that the
+  // refusal leaves the rules reading. A screen that can be left dead by a
+  // mistyped field is worse than no screen.
+  console.log('\nChoosing who reads');
+
+  await page.goto(`${BASE}/reading`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+
+  expect('it says which reader is running', (await page.locator('.badge.on').count()) === 1);
+
+  const onTheRules = await page.locator('section.card.reader.on h2').innerText();
+  expect('and it is the rules, to begin with', /rules/i.test(onTheRules), onTheRules);
+
+  await page.locator('form button[type="submit"]').click();
+  await page.waitForTimeout(900);
+
+  const said = (await page.locator('.card.problem').innerText().catch(() => '')).trim();
+  expect('asking for the model with no key is refused, on the page', said.length > 0, 'nothing was shown');
+  expect('and the refusal names what is missing', /ANTHROPIC_API_KEY/.test(said), said);
+
+  const still = await page.locator('section.card.reader.on h2').innerText();
+  expect('and the rules are still reading', /rules/i.test(still), still);
+
 
   console.log('');
   if (failures > 0) {

@@ -16,7 +16,10 @@ import express, { type Express } from 'express';
 
 import { fieldsOf } from '@order-email/core';
 
+import { theRules, type Reader } from '@order-email/core';
+
 import { mailboxOf, readMailbox, summarise, type Mailbox, type Settings } from './mailbox.js';
+import { theModel, whyNotAModel } from './model/claude.js';
 import type { Source } from './source.js';
 
 export interface Options {
@@ -48,15 +51,31 @@ export function build({ folder, source, settings }: Options): Service {
    */
   let mailbox: Mailbox = empty(source?.describes ?? folder ?? '');
 
+  /*
+   * Which reader is running, and it can change while it runs.
+   *
+   * It used to be fixed at startup by a flag. That made the second reader
+   * something you had to already know about and restart to try -- which is the
+   * same as not having it, for anybody who opens this to see what it does. The
+   * screen at /reading switches it.
+   *
+   * The key lives here, in a closure, for the life of this process. It is never
+   * written to disk, never logged, never sent back, and never put in a URL. The
+   * server binds to 127.0.0.1, so the only thing that can post one is something
+   * already on this machine.
+   */
+  let reader: Reader = settings.reader ?? theRules({ supplierDomains: settings.supplierDomains });
+  const reading = (): Settings => ({ ...settings, reader });
+
   /** Fetch, and replace the snapshot. Never leaves a half-read mailbox behind. */
   async function reload(): Promise<Mailbox> {
     if (!source) {
-      mailbox = await readMailbox(folder ?? '.', settings);
+      mailbox = await readMailbox(folder ?? '.', reading());
       return mailbox;
     }
 
     const { raws, from } = await source.load();
-    mailbox = await mailboxOf(raws, settings, from);
+    mailbox = await mailboxOf(raws, reading(), from);
     return mailbox;
   }
 
@@ -89,9 +108,9 @@ export function build({ folder, source, settings }: Options): Service {
        * at startup and says it in the header, beside which mailbox is being
        * read, which is the other question of the same kind.
        */
-      readBy: settings.reader?.describes ?? 'the rules in extract/rules.ts',
-      readerName: settings.reader?.name ?? 'rules',
-      couldBeAModel: !settings.reader || settings.reader.name === 'rules',
+      readBy: reader.describes,
+      readerName: reader.name,
+      couldBeAModel: reader.name === 'rules',
       folder: mailbox.folder,
       readAt: mailbox.readAt,
       messages: mailbox.entries.length,
@@ -190,6 +209,101 @@ export function build({ folder, source, settings }: Options): Service {
       })),
     });
   });
+
+  /**
+   * Switch reader, and read the mailbox again with it.
+   *
+   * The whole of the write surface, along with reload, and it owns nothing: the
+   * answer is recomputed from the mail either way. Switching back to the rules
+   * forgets the key.
+   */
+  api.post('/api/reader', (req, res) => {
+    const asked = req.body as { reader?: unknown; key?: unknown; model?: unknown };
+    const which = asked.reader === 'model' ? 'model' : asked.reader === 'rules' ? 'rules' : null;
+
+    if (!which) {
+      return res.status(400).json({ error: 'reader is "rules" or "model"' });
+    }
+
+    if (which === 'rules') {
+      reader = theRules({ supplierDomains: settings.supplierDomains });
+      return reread(res);
+    }
+
+    const key = typeof asked.key === 'string' && asked.key.trim() !== '' ? asked.key.trim() : undefined;
+    const model = typeof asked.model === 'string' && asked.model.trim() !== '' ? asked.model.trim() : undefined;
+    const why = whyNotAModel(key ? { key } : {});
+
+    if (why) {
+      // Said in words rather than as a code, because this answer is shown to a
+      // person on the screen that asked the question.
+      return res.status(400).json({ error: why });
+    }
+
+    reader = theModel({ ...(key ? { key } : {}), ...(model ? { model } : {}) });
+    return reread(res);
+  });
+
+  /** Read it all again, and say what that produced. Never says the key. */
+  function reread(res: express.Response) {
+    return reload().then(
+      () => {
+        /*
+         * A reader that could not read a single message is a broken reader, not
+         * a quiet mailbox.
+         *
+         * The model reader turns a refusal from the API into one unread message
+         * with the reason in its doubts, which is right: one message failing
+         * should not empty the mailbox. But a wrong key fails all of them, and
+         * without this the screen would report a successful switch to a reader
+         * that had produced no orders at all -- and the reason, which the API
+         * actually gave, would be buried eleven times over in a list nobody
+         * opens next.
+         */
+        const couldNot = mailbox.entries.filter((one) =>
+          one.reading.doubts.some((doubt) => doubt.includes('could not read this message'))
+        );
+
+        if (mailbox.entries.length > 0 && couldNot.length === mailbox.entries.length) {
+          const said = couldNot[0]?.reading.doubts.find((doubt) => doubt.includes('could not read this message')) ?? '';
+          reader = theRules({ supplierDomains: settings.supplierDomains });
+
+          return reload().then(() =>
+            res.status(502).json({
+              error: 'that reader could not read anything, so the rules are reading again',
+              detail: said.replace(/^.*could not read this message: /, ''),
+            })
+          );
+        }
+
+        return res.json({
+          readBy: reader.describes,
+          readerName: reader.name,
+          couldBeAModel: reader.name === 'rules',
+          readAt: mailbox.readAt,
+          messages: mailbox.entries.length,
+          orders: mailbox.orders.length,
+          forAPerson: mailbox.unlinked.length,
+
+          /*
+           * What the reader would not stand behind, counted.
+           *
+           * The number worth showing when a model has just read the mailbox: a
+           * doubt is a value it produced whose words were not in the message,
+           * or a line it could not complete. The rules produce doubts too, of a
+           * different kind, so this is comparable between the two.
+           */
+          doubts: mailbox.entries.reduce((all, one) => all + one.reading.doubts.length, 0),
+        });
+      },
+      (error: Error) => {
+        // Back to the reader that was working, rather than leaving a screen
+        // that cannot read anything.
+        reader = theRules({ supplierDomains: settings.supplierDomains });
+        res.status(502).json({ error: 'reading with that failed', detail: error.message });
+      }
+    );
+  }
 
   api.post('/api/reload', (req, res, next) => {
     reload().then(

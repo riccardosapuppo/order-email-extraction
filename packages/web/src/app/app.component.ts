@@ -44,6 +44,7 @@ import { LogoComponent } from './shell/logo.component';
               <em>{{ waiting() }}</em>
             }
           </a>
+          <a routerLink="/reading" routerLinkActive="here">How it reads</a>
         </nav>
 
         <details class="reader">
@@ -51,7 +52,8 @@ import { LogoComponent } from './shell/logo.component';
             The face of it says the thing, so that knowing costs no click. A
             chip reading only "read by the rules" is a fact about the page;
             what somebody needs to see is that there is another way to read it,
-            and clicking is then for how rather than for whether.
+            and clicking is then for how rather than for whether -- and the
+            panel ends at the screen where it can actually be done.
           -->
           <summary [attr.aria-label]="'Read by ' + readerName() + '. How the other reader works.'">
             read by <strong>{{ readerName() }}</strong>
@@ -74,9 +76,13 @@ import { LogoComponent } from './shell/logo.component';
                 and a value whose words are not there is dropped rather than
                 shown.
               </p>
-              <p><code>ANTHROPIC_API_KEY=… npm start -- --reader model</code></p>
+              <p>
+                <a routerLink="/reading" (click)="shut()">Switch to it on the
+                reading screen</a>, or start with
+                <code>ANTHROPIC_API_KEY=… npm start -- --reader model</code>.
+              </p>
               <p class="aside">
-                Asked for, never detected: without that flag nothing here talks
+                Asked for, never detected: until one of those, nothing here talks
                 to anybody.
               </p>
             } @else {
@@ -86,7 +92,10 @@ import { LogoComponent } from './shell/logo.component';
                 not be found there was dropped, and says so under the doubts on
                 that message.
               </p>
-              <p><code>npm start</code> on its own goes back to the rules.</p>
+              <p>
+                <a routerLink="/reading" (click)="shut()">The reading screen</a>
+                switches back to the rules, and forgets the key when it does.
+              </p>
             }
           </div>
         </details>
@@ -119,6 +128,17 @@ import { LogoComponent } from './shell/logo.component';
 })
 export class AppComponent {
   private readonly api = inject(ApiService);
+
+  /**
+   * Close the panel when a link inside it is followed.
+   *
+   * A <details> stays open on its own, and a panel left hanging over the screen
+   * somebody has just navigated to is a panel they have to dismiss before they
+   * can read what they asked for.
+   */
+  shut(): void {
+    document.querySelector('details.reader')?.removeAttribute('open');
+  }
 
   readonly folder = signal<string | null>(null);
   readonly waiting = signal(0);
