@@ -1,23 +1,21 @@
-# Riscontri veri che non sono segreti, e perché.
+# Real findings that are not secrets, and why.
 #
-# Ognuno è stato letto. Nessuno apre qualcosa che esiste.
+# Every one has been read. None of them opens anything that exists.
 #
-# Questo progetto si collega a una casella di posta, quindi la parola che il
-# cancello cerca compare per forza: in una dichiarazione di tipo, in una
-# lettura di variabile d'ambiente, e in un valore inventato dentro una prova.
-# Nessuno dei tre è una credenziale. La casella a cui si collega davvero, qui,
-# è un server IMAP finto che accetta chiunque e ascolta solo su 127.0.0.1.
+# This project connects to a mailbox, so the word the gate looks for is bound
+# to appear: in a field of a type, in a read of an environment variable, and in
+# an invented value inside a check. None of the three is a credential. The
+# mailbox it actually connects to here is an invented IMAP server that accepts
+# anybody and listens only on 127.0.0.1.
 #
-# Il punto della lettura da ambiente è proprio il contrario di un segreto nel
-# codice: IMAP_PASSWORD ha la precedenza su quello che c'è nell'indirizzo,
-# perché una password dentro una URL finisce nella cronologia della shell e
-# nell'elenco dei processi.
+# The read from the environment is the opposite of a secret in the code:
+# IMAP_PASSWORD takes precedence over whatever is in the address, because a
+# password inside a URL ends up in the shell history and in the process list.
 #
-# Non vale per i nomi aziendali e per le chiavi vere: quelli bloccano comunque,
-# da qualunque file.
+# This never covers company names or real keys: those block from any file.
 #
-# Nota per chi scrive qui: le motivazioni non devono riprodurre il codice che
-# scusano. Questo file viene esaminato come tutti gli altri.
+# A note for whoever writes here next: a reason must not reproduce the code it
+# excuses. This file is reviewed like every other one.
 
-packages/server/src/imap/client.ts    # il campo del tipo, e la lettura da ambiente che ha la precedenza sull'indirizzo
-packages/server/test/imap.test.ts     # un valore inventato, per provare che l'ambiente vince davvero
+packages/server/src/imap/client.ts    # the field of the type, and the read from the environment that takes precedence over the address
+packages/server/test/imap.test.ts     # an invented value, to prove the environment really wins
