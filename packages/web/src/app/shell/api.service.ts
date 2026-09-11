@@ -122,23 +122,20 @@ export interface Unlinked {
 export interface Health {
   status: string;
   folder: string;
+
+  /** Which reader produced everything on every screen, in words. */
+  readBy: string;
+
+  /** The short form of the same thing, for the header. */
+  readerName: string;
+
+  /** Whether the other reader is still an option, so the shell can say so. */
+  couldBeAModel: boolean;
+
   readAt: string;
   messages: number;
   orders: number;
   forAPerson: number;
-}
-
-/** What `GET /api/orders` answers with. */
-export interface TheOrders {
-  readAt: string;
-
-  /** Which reader produced every value below, in words, for the page to say. */
-  readBy: string;
-
-  /** Whether the other reader is still an option, so the page can mention it. */
-  couldBeAModel: boolean;
-
-  orders: OrderSummary[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -149,8 +146,8 @@ export class ApiService {
     return this.http.get<Health>('/api/health');
   }
 
-  orders(): Observable<TheOrders> {
-    return this.http.get<TheOrders>('/api/orders');
+  orders(): Observable<{ readAt: string; orders: OrderSummary[] }> {
+    return this.http.get<{ readAt: string; orders: OrderSummary[] }>('/api/orders');
   }
 
   order(key: string): Observable<{ order: OrderSummary; messages: LinkedMessage[] }> {

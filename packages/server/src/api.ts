@@ -77,6 +77,21 @@ export function build({ folder, source, settings }: Options): Service {
        * cleared and a stranger is left alone and named. See tools/lib/ports.mjs.
        */
       what: 'order-email-extraction',
+
+      /*
+       * Who is reading, on every screen rather than on one.
+       *
+       * Which reader is in use was visible only in the README and in the flag
+       * that chooses it: somebody looking at the running thing could not tell
+       * that a model was an option at all, and the values only name a model
+       * once one has actually read something -- so the option was invisible
+       * precisely to whoever had not already found it. The shell asks for this
+       * at startup and says it in the header, beside which mailbox is being
+       * read, which is the other question of the same kind.
+       */
+      readBy: settings.reader?.describes ?? 'the rules in extract/rules.ts',
+      readerName: settings.reader?.name ?? 'rules',
+      couldBeAModel: !settings.reader || settings.reader.name === 'rules',
       folder: mailbox.folder,
       readAt: mailbox.readAt,
       messages: mailbox.entries.length,
@@ -89,19 +104,6 @@ export function build({ folder, source, settings }: Options): Service {
   api.get('/api/orders', (req, res) => {
     res.json({
       readAt: mailbox.readAt,
-
-      /*
-       * Who read them, sent so the interface can say it.
-       *
-       * Which reader is in use was, for a while, visible only in the README and
-       * in the flag that chooses it. Somebody looking at the running thing
-       * could not tell that a model was an option at all, and the values
-       * themselves only say so once a model has actually read one. A page that
-       * argues about how its values were obtained should say which way it
-       * obtained them.
-       */
-      readBy: settings.reader?.describes ?? 'the rules in extract/rules.ts',
-      couldBeAModel: !settings.reader || settings.reader.name === 'rules',
 
       orders: mailbox.orders.map(summarise),
     });

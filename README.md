@@ -245,6 +245,13 @@ answers with the right words is a leftover of this project and is stopped; any
 other answer is a stranger, and the run says what it saw and stops instead of
 touching it. A port that answers is not proof that what answered is yours.
 
+The consequence, said plainly: **a second `npm start` takes the ports from the
+first**, because it cannot tell a leftover from an instance somebody is looking
+at — both answer with the same words. It says which process it stopped. Running
+two copies at once means the older one goes; the checks do the same thing for
+the same reason, so starting a check while looking at the page will close the
+page.
+
 ## The eleven messages
 
 `mail/` holds a mailbox built to exercise the cases that are actually hard.

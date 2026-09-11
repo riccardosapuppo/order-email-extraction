@@ -33,19 +33,3 @@ td a {
     min-width: 58rem;
   }
 }
-
-/* Who read all of this. Quieter than the paragraph above it: it is a fact
-   about the page rather than part of the argument, and the command in it is
-   for somebody who wants to try the other reader, not for everybody. */
-.lede.reader {
-  margin-top: 0.55rem;
-  font-size: 0.86rem;
-  opacity: 0.85;
-}
-
-.lede.reader code {
-  font-size: 0.92em;
-  padding: 0.05rem 0.3rem;
-  border-radius: 0.25rem;
-  background: color-mix(in srgb, currentColor 10%, transparent);
-}
