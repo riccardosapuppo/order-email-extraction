@@ -13,7 +13,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { theRules } from '@order-email/core';
+
 import { build } from './api.js';
+import { theModel, whyNotAModel } from './model/claude.js';
 import { sourceFrom } from './source.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -56,13 +59,57 @@ const source = sourceFrom({ imap: flag('imap') ?? process.env.IMAP_URL, folder }
 const port = Number(argument('port', '3200'));
 const host = argument('host', '127.0.0.1');
 
+const supplierDomains = argument('suppliers', 'medisupply.example').split(',');
+
+/**
+ * Who reads the mail: the rules, or a model.
+ *
+ * Asked for, never detected. It would be friendlier to notice ANTHROPIC_API_KEY
+ * in the environment and quietly use the model, and that is exactly why it does
+ * not: a program that reads differently depending on what happens to be exported
+ * in a shell is a program whose answers cannot be reproduced — and the checks
+ * would start spending money the first time somebody set a key on a machine
+ * that runs them. The default is the reader that needs nothing and answers the
+ * same way twice.
+ *
+ * What each one is for, and what it costs, is in `read/reader.ts`.
+ */
+const which = argument('reader', 'rules');
+
+if (which !== 'rules' && which !== 'model') {
+  console.error(`--reader is "rules" or "model", not "${which}".`);
+  process.exit(2);
+}
+
+let reader = theRules({ supplierDomains });
+
+if (which === 'model') {
+  const why = whyNotAModel();
+
+  if (why) {
+    // 2, not 1. This did not fail, it could not run, and the difference matters
+    // to whoever reads the exit code as much as to whoever reads the line.
+    console.error(`Cannot read with a model: ${why}.`);
+    console.error('Set it in the environment rather than on the command line:');
+    console.error('  ANTHROPIC_API_KEY=... npm start -- --reader model');
+    console.error('A key given as an argument is a key in the shell history and in the process list.');
+    process.exit(2);
+  }
+
+  const chosen = flag('model');
+  reader = theModel(chosen ? { model: chosen } : {});
+}
+
+console.log(`reading with ${reader.describes}`);
+
 const { api, reload } = build({
   source,
   settings: {
     // Which domains are suppliers, so their replies are read as answers
     // rather than as new orders. In a real deployment this comes from the
     // supplier list; here it is the demonstration mailbox's one supplier.
-    supplierDomains: argument('suppliers', 'medisupply.example').split(','),
+    supplierDomains,
+    reader,
   },
 });
 

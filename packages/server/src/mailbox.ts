@@ -23,8 +23,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { fieldsOf, join, read, readEml, stageOf } from '@order-email/core';
-import type { Message, Order, Reading } from '@order-email/core';
+import { fieldsOf, join, readEml, stageOf, theRules } from '@order-email/core';
+import type { Message, Order, Reader, Reading } from '@order-email/core';
 
 export interface Entry {
   readonly file: string;
@@ -43,6 +43,13 @@ export interface Mailbox {
 export interface Settings {
   /** Domains that are suppliers, so their replies are not read as new orders. */
   readonly supplierDomains: readonly string[];
+
+  /**
+   * Who reads the messages. The rules when nothing says otherwise, because that
+   * is the one that needs no key, no network and no luck -- see read/reader.ts
+   * for what the other one buys and what it costs.
+   */
+  readonly reader?: Reader;
 }
 
 /**
@@ -53,7 +60,7 @@ export interface Settings {
  * whole folder because of one is the kind of strictness that gets a tool
  * abandoned. The failure is kept and reported rather than swallowed.
  */
-export function readMailbox(folder: string, settings: Settings): Mailbox {
+export async function readMailbox(folder: string, settings: Settings): Promise<Mailbox> {
   const full = path.resolve(folder);
 
   const files = fs
@@ -83,37 +90,61 @@ export interface Raw {
  * about. They are adapters; this is where what they produce becomes the same
  * thing, and the only place that knows how a message becomes an order.
  */
-export function mailboxOf(raws: readonly Raw[], settings: Settings, from: string): Mailbox {
-  const entries: Entry[] = [];
+export async function mailboxOf(raws: readonly Raw[], settings: Settings, from: string): Promise<Mailbox> {
+  const reader = settings.reader ?? theRules({ supplierDomains: settings.supplierDomains });
 
-  for (const { name: file, raw } of raws) {
-    try {
-      if (raw instanceof Error) throw raw;
+  /*
+   * Several at a time, and not all of them at once.
+   *
+   * With the rules this is a formality -- they never wait for anything. With a
+   * model each message is a round trip, so reading eleven of them one after the
+   * other takes eleven times as long as it needs to, and reading all eleven at
+   * once is how an account meets its rate limit on the first mailbox somebody
+   * tries. Four is slow enough to be polite and fast enough that nobody watches
+   * a blank page.
+   */
+  const entries: Entry[] = new Array(raws.length);
+  const atATime = 4;
 
-      const message = readEml(raw, file);
-      entries.push({
-        file,
-        message,
-        reading: read(message, { supplierDomains: settings.supplierDomains }),
-      });
-    } catch (error) {
-      entries.push({
-        file,
-        message: unreadable(file),
-        reading: {
-          messageId: file,
-          fact: { kind: 'unknown' },
-          confidence: 0,
-          because: [],
-          doubts: [`this file could not be read: ${(error as Error).message}`],
-        },
-      });
-    }
+  for (let start = 0; start < raws.length; start += atATime) {
+    await Promise.all(
+      raws.slice(start, start + atATime).map(async ({ name: file, raw }, offset) => {
+        entries[start + offset] = await readOne(file, raw, reader);
+      })
+    );
   }
 
   const { orders, unlinked } = join(entries.map(({ message, reading }) => ({ message, reading })));
 
   return { folder: from, readAt: new Date(), entries, orders, unlinked };
+}
+
+/**
+ * One message, read by whoever is reading.
+ *
+ * Anything thrown -- a file that will not parse, a model that will not answer --
+ * becomes an entry carrying the reason rather than ending the read. A mailbox is
+ * somebody else's export and one bad message in it is ordinary.
+ */
+async function readOne(file: string, raw: string | Error, reader: Reader): Promise<Entry> {
+  try {
+    if (raw instanceof Error) throw raw;
+
+    const message = readEml(raw, file);
+    return { file, message, reading: await reader.read(message) };
+  } catch (error) {
+    return {
+      file,
+      message: unreadable(file),
+      reading: {
+        messageId: file,
+        fact: { kind: 'unknown' },
+        confidence: 0,
+        because: [],
+        doubts: [`this file could not be read: ${(error as Error).message}`],
+      },
+    };
+  }
 }
 
 /**

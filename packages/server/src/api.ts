@@ -36,20 +36,27 @@ export interface Service {
 }
 
 export function build({ folder, source, settings }: Options): Service {
-  // Something to answer with before anything has been fetched. Fetching over
-  // IMAP is a round trip, and a server that refuses every request until the
-  // first sync finishes is a server that looks broken while it is working.
-  let mailbox: Mailbox = folder && !source ? readMailbox(folder, settings) : empty(source?.describes ?? folder ?? '');
+  /*
+   * Something to answer with before anything has been read.
+   *
+   * It used to read the folder here, synchronously, when there was no source.
+   * Reading is asynchronous now -- a model reader crosses a network per message
+   * -- so there is one path for everybody: empty until `reload()` has been
+   * awaited. `main.ts` awaits it before it listens, so nothing is served from
+   * this placeholder in normal use; a test that builds the service and asks
+   * immediately gets an empty mailbox rather than a half-read one.
+   */
+  let mailbox: Mailbox = empty(source?.describes ?? folder ?? '');
 
   /** Fetch, and replace the snapshot. Never leaves a half-read mailbox behind. */
   async function reload(): Promise<Mailbox> {
     if (!source) {
-      mailbox = readMailbox(folder ?? '.', settings);
+      mailbox = await readMailbox(folder ?? '.', settings);
       return mailbox;
     }
 
     const { raws, from } = await source.load();
-    mailbox = mailboxOf(raws, settings, from);
+    mailbox = await mailboxOf(raws, settings, from);
     return mailbox;
   }
 

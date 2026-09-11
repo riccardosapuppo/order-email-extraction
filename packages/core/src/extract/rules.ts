@@ -30,6 +30,7 @@ import type { Fact, Item, Kind, Reading } from '../facts.js';
 import type { Message } from '../message.js';
 import { domainOf, withoutQuoted } from '../message.js';
 import { firstHit, fromHit, hits, lineAround } from './found.js';
+import type { Hit, Where } from './found.js';
 
 /**
  * What the message is.
@@ -483,13 +484,16 @@ function asOrder(
   const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference', doubts);
   const items = itemsIn(body, doubts);
 
-  const urgent = firstHit(`${subject}\n${body}`, URGENT);
-  const relaxed = firstHit(`${subject}\n${body}`, RELAXED);
+  // The fifth of these, and the same mistake: found in the subject and the
+  // body joined together, recorded as the body's. An order saying it is
+  // "urgent" had its priority marked on "Hello,".
+  const urgent = somewhereIn(subject, body, URGENT);
+  const relaxed = somewhereIn(subject, body, RELAXED);
 
   const priority = urgent
-    ? fromHit('high' as const, 0.7, 'body', urgent, 'urgency-word')
+    ? fromHit('high' as const, 0.7, urgent.where, urgent.hit, 'urgency-word')
     : relaxed
-      ? fromHit('low' as const, 0.6, 'body', relaxed, 'urgency-word')
+      ? fromHit('low' as const, 0.6, relaxed.where, relaxed.hit, 'urgency-word')
       : undefined;
 
   const wantedHit = firstHit(body, DATE);
@@ -521,6 +525,35 @@ function asOrder(
   return { messageId: message.id, fact, confidence, because, doubts };
 }
 
+/**
+ * The first match, and which part of the message it is actually in.
+ *
+ * Four fields below used to match against the subject and the body joined
+ * together, and then recorded the offsets as though they belonged to the body.
+ * Those offsets point into a string one subject line longer, so every mark they
+ * produced sat that many characters to the right of the words it claimed: in
+ * this mailbox, a confirmation whose status said it had read "We can supply"
+ * and whose highlight landed on "r number SO 8".
+ *
+ * Nothing caught it for a long time, because everything downstream used the
+ * same wrong offsets and agreed with itself -- the interface highlighted
+ * exactly where the API said to, and the check through the screen confirmed
+ * that it had. It took comparing the offsets against the text the field itself
+ * says it read.
+ *
+ * The body first. A value stated in the body is the sender stating it; the
+ * subject of a reply is usually a quotation of somebody else.
+ */
+function somewhereIn(subject: string, body: string, pattern: RegExp): { where: Where; hit: Hit } | null {
+  const inBody = firstHit(body, pattern);
+  if (inBody) return { where: 'body', hit: inBody };
+
+  const inSubject = firstHit(subject, pattern);
+  if (inSubject) return { where: 'subject', hit: inSubject };
+
+  return null;
+}
+
 function asConfirmation(
   message: Message,
   subject: string,
@@ -528,7 +561,6 @@ function asConfirmation(
   because: string[],
   doubts: string[]
 ): Reading {
-  const both = `${subject}\n${body}`;
   const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference', doubts);
   const supplierOrderId = referenceOf(subject, body, SUPPLIER_REFERENCE, 'supplier-reference', doubts);
 
@@ -536,24 +568,27 @@ function asConfirmation(
   // would otherwise silently change what an unreadable reply is assumed to be,
   // and "assumed accepted" is the assumption that costs money.
   const UNREAD = { status: 'accepted' as const, pattern: /$^/ };
-  const status = STATUS.find((candidate) => candidate.pattern.test(both)) ?? UNREAD;
-  if (status === UNREAD) {
+  // Chosen and located in one step, so the two cannot disagree about which
+  // words the answer was read from.
+  const answered = STATUS.map((candidate) => ({
+    candidate,
+    found: somewhereIn(subject, body, candidate.pattern),
+  })).find((one) => one.found !== null);
+
+  const status = answered?.candidate ?? UNREAD;
+  if (!answered) {
     doubts.push('the supplier’s answer could not be read as accepted, partial, delayed or refused');
   }
 
-  const statusHit = firstHit(both, status.pattern) ?? {
-    text: '',
-    from: 0,
-    to: 0,
-    groups: [],
-  };
+  const statusHit: Hit = answered?.found?.hit ?? { text: '', from: 0, to: 0, groups: [] };
+  const statusWhere: Where = answered?.found?.where ?? 'body';
 
   const etaHit = firstHit(body, DATE);
   const etaDate = etaHit ? readDate(etaHit.text) : null;
 
   const fact: Fact = {
     kind: 'confirmation',
-    status: fromHit(status.status, statusHit.text ? 0.8 : 0.3, 'body', statusHit, 'status-language'),
+    status: fromHit(status.status, statusHit.text ? 0.8 : 0.3, statusWhere, statusHit, 'status-language'),
     ...(reference ? { reference } : {}),
     ...(supplierOrderId ? { supplierOrderId } : {}),
     ...(etaHit && etaDate ? { eta: fromHit(etaDate, 0.6, 'body', etaHit, 'a-date-in-the-body') } : {}),
@@ -579,24 +614,35 @@ function asShipment(
   because: string[],
   doubts: string[]
 ): Reading {
-  const both = `${subject}\n${body}`;
   const reference = referenceOf(subject, body, REFERENCE, 'purchase-order-reference', doubts);
 
-  const trackingHit = firstHit(both, TRACKING);
-  const carrierHit = firstHit(both, CARRIER);
-  const noteHit = firstHit(both, DELIVERY_NOTE);
+  const trackingHit = somewhereIn(subject, body, TRACKING);
+  const carrierHit = somewhereIn(subject, body, CARRIER);
+  const noteHit = somewhereIn(subject, body, DELIVERY_NOTE);
 
   const fact: Fact = {
     kind: 'shipment',
     ...(reference ? { reference } : {}),
     ...(trackingHit
-      ? { tracking: fromHit(clean(trackingHit.groups[0] ?? ''), 0.85, 'body', trackingHit, 'tracking-number') }
+      ? {
+          tracking: fromHit(
+            clean(trackingHit.hit.groups[0] ?? ''),
+            0.85,
+            trackingHit.where,
+            trackingHit.hit,
+            'tracking-number'
+          ),
+        }
       : {}),
     ...(carrierHit
-      ? { carrier: fromHit(carrierHit.text.toUpperCase(), 0.9, 'body', carrierHit, 'carrier-name') }
+      ? {
+          carrier: fromHit(carrierHit.hit.text.toUpperCase(), 0.9, carrierHit.where, carrierHit.hit, 'carrier-name'),
+        }
       : {}),
     ...(noteHit
-      ? { note: fromHit(clean(noteHit.groups[0] ?? ''), 0.8, 'body', noteHit, 'delivery-note-number') }
+      ? {
+          note: fromHit(clean(noteHit.hit.groups[0] ?? ''), 0.8, noteHit.where, noteHit.hit, 'delivery-note-number'),
+        }
       : {}),
   };
 

@@ -25,8 +25,8 @@ const MAIL = path.join(here, '..', '..', '..', '..', 'mail');
 
 let mailbox: Mailbox;
 
-before(() => {
-  mailbox = readMailbox(MAIL, { supplierDomains: ['medisupply.example'] });
+before(async () => {
+  mailbox = await readMailbox(MAIL, { supplierDomains: ['medisupply.example'] });
 });
 
 describe('reading the folder', () => {
@@ -121,6 +121,36 @@ describe('what the interface is told about an order', () => {
         mailbox.entries.some((entry) => entry.file === said.weakest!.file),
         `${said.key} points at ${said.weakest.file}, which is not in the folder`
       );
+    }
+  });
+
+  it('every span points at the words it says it does', () => {
+    /*
+     * The invariant the interface rests on, asserted over the real folder.
+     *
+     * A field carries offsets and the text it read; the interface is sent the
+     * subject and the body and highlights those offsets in them. If the two
+     * disagree by one character the mark lands on the wrong words — and it
+     * still looks like a working feature, which is what makes it worth a check
+     * rather than a comment.
+     *
+     * It is not hypothetical. The rules measure the body with quoted replies
+     * removed, while the message carries them whole; today that only ever
+     * differs by a trailing newline, so nothing moves. A message opening with a
+     * blank line would shift every mark in it, and this is what would say so.
+     */
+    for (const entry of mailbox.entries) {
+      for (const { path: which, field } of fieldsOf(entry.reading.fact)) {
+        const part = field.provenance.where === 'subject' ? entry.message.subject : entry.message.body;
+        const atTheOffsets = part.slice(field.provenance.from, field.provenance.to);
+
+        assert.equal(
+          atTheOffsets,
+          field.provenance.text,
+          `${entry.file} ${which}: the offsets point at ${JSON.stringify(atTheOffsets)}, ` +
+            `and the field says it read ${JSON.stringify(field.provenance.text)}`
+        );
+      }
     }
   });
 

@@ -3,5 +3,8 @@ export * from './highlight.js';
 export * from './message.js';
 export * from './extract/found.js';
 export * from './extract/rules.js';
+export * from './read/reader.js';
+export * from './read/locate.js';
+export * from './read/answer.js';
 export * from './link/join.js';
 export * from './mail/eml.js';

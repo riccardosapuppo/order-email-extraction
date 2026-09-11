@@ -28,17 +28,32 @@ by searching the body for the value again, which would find the second `4471` as
 happily as the first, and a highlight over the wrong occurrence is worse than
 none: it is a wrong claim that looks like evidence.
 
-### Rules, not a model
+### Two readers, one contract
 
-The reading is done by named rules. That is a trade and it is worth saying which
-way it cuts.
+There are two ways to read a message here and they are not rivals.
 
-It gives up on messages phrased in ways nobody anticipated. In exchange it runs
-with no API key, costs nothing per message, gives the same answer twice, can
-name the rule and the characters behind every value, and **says so** when it
-does not understand. A model asked which order an email belongs to will name
-one: plausibly, sometimes wrongly, and without ever mentioning that it was
-unsure.
+**The rules** (`extract/rules.ts`) are named patterns. They give up on messages
+phrased in ways nobody anticipated, and in exchange they need no key, cost
+nothing per message, answer the same way twice, and can name the function and
+the characters behind every value. They are the default, and they are what the
+checks run: a check whose answer can change on its own is not a check.
+
+**A model** (`--reader model`) reads the messages nobody wrote a rule for, which
+is most of the mail that actually arrives. That is what the original of this
+system did, and it is why it worked.
+
+What both have to do is the same, and it is the whole of the argument: **a value
+has to point at the words it was read from.** A rule knows where it matched. A
+model is asked for the text it read and never for offsets — ask a model for a
+character offset and it will give you a plausible integer — and every quote it
+gives back is searched for in the message. Found, the value keeps the span of
+the message's own characters. Not found, the value is **dropped**, and the
+reading says which words were not there.
+
+That last case is the one worth building all of this for. A model asked to fill
+in a field fills it in, and the invented answer has the same shape and the same
+confident number as the read one. The difference is that the read one can be
+pointed at.
 
 ![The messages the system would not attach to any order, each saying what it was understood to be and why it stopped there](docs/for-a-person.png)
 
@@ -97,20 +112,24 @@ definition of an adapter.
 
 ### A model read the messages
 
-The original asked a language model what each email meant. This does not, and
-the argument for that is above under **Rules, not a model**: it is the one
-design decision this project exists to make.
+The original asked a language model what each email meant, and it read well —
+better than any set of rules would on the mail that actually arrives. That part
+was right, and this reconstruction keeps it: `--reader model` is here.
 
-What that costs is real and is not hidden: a message phrased in a way no rule
-anticipated is read as `unknown` and put in front of a person, where the model
-would have produced an answer. Sometimes that answer would have been right.
+What went wrong was downstream of the reading. The model's JSON went into
+Postgres as it arrived, with a `confidence` column nothing ever read. When a
+value turned out to be wrong there was no way to ask where it had come from,
+because the answer — a sentence in an email — had never been written down. A
+quantity somebody had shipped against was then either right or it was an
+argument, and the argument took an afternoon.
 
-What is gained is that every value can name the rule and the characters behind
-it, the same message reads the same way twice, and **when it does not
-understand, it says so**. A model asked which order an email belongs to will
-name one: plausibly, sometimes wrongly, and without ever mentioning that it was
-unsure. In a system where the output is a purchase order, that is the failure
-that costs money quietly.
+So the model is not the thing this project refuses. What it adds is the contract
+above: a value that cannot be pointed at does not get to be a value. Every
+reading a model produces here is checked against the message first, and what it
+could not have read is dropped rather than stored with a number beside it.
+
+The rules are still the default and still the only reader the checks use,
+because a check whose answer can change on its own is not a check.
 
 ## Before you start
 
@@ -118,8 +137,11 @@ that costs money quietly.
   exact version CI uses is in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 - **npm 10 or newer**, which ships with Node 20. This is an npm **workspace**;
   `yarn` and `pnpm` will not read it as written.
-- **Nothing else.** No database, no Docker, no API key, no account anywhere. It
-  reads a folder and serves it on localhost.
+- **Nothing else, to see it work.** No database, no Docker, no API key, no
+  account anywhere: it reads a folder and serves it on localhost. Reading with a
+  model instead wants an Anthropic API key, and reading a real mailbox wants
+  that mailbox. Both are asked for explicitly and neither is needed for anything
+  else on this page.
 - **265 MB** of `node_modules`, measured with `du -sh`, almost all of it the
   Angular build. The server and the reading rules have no runtime dependencies
   but Express.
@@ -145,7 +167,41 @@ messages, starts the server (which fetches them over the real protocol), starts
 the interface, and opens <http://localhost:4300>.
 
 The browser is not opened in CI, with no terminal attached, or with `--no-open`
-(or `NO_OPEN=1`), and it says which of those happened.
+(or `NO_OPEN=1`), and it says which of those happened. It opens when the page
+answers through its own proxy, not after a fixed wait — about twenty seconds
+from a cold build here.
+
+### Reading with a model instead
+
+```
+ANTHROPIC_API_KEY=... npm start -- --reader model
+```
+
+**Asked for, never detected.** It would be friendlier to notice the key in the
+environment and quietly use the model, and that is exactly why it does not: a
+program that reads differently depending on what happens to be exported in a
+shell is a program whose answers cannot be reproduced — and the checks would
+start spending money the first time somebody set a key on a machine that runs
+them. Without `--reader model`, nothing here talks to anybody.
+
+The key is read from the environment and there is deliberately **no `--key`
+flag**, for the same reason `IMAP_PASSWORD` beats whatever is written in an IMAP
+URL: a secret passed as an argument is a secret in the shell history and in the
+process list, where every other process on the machine can read it.
+
+`--model <id>` or `ANTHROPIC_MODEL` picks a different one; the default is
+`claude-sonnet-5`. Four messages are read at a time — one at a time is slow
+enough that somebody watches a blank page, and all of them at once is how an
+account meets its rate limit on the first mailbox it sees. It costs a few pennies
+for these eleven.
+
+Every value comes back through the check described under **Two readers, one
+contract**, and the interface names the reader beside each one: `by
+claude-sonnet-5` where the rules would have said `by quantity-and-unit`. A value
+the model could not have read is not there to be named — it is in the doubts,
+with the words that were not in the message.
+
+There is no key in this repository and no file that could hold one.
 
 ### The three parts, separately
 
@@ -271,9 +327,11 @@ npm run check:mark     # the header mark and the tab icon are one drawing
 npm run screenshots    # retakes the pictures above, likewise
 ```
 
-`npm test` is 94 tests: 74 over the reading, the parser, the joining and the
-segmentation, and 20 over the server — what the interface is actually told about
-an order, and the IMAP client, against the invented mailbox over a socket.
+`npm test` is 116 tests: 89 over the reading, the parser, the joining, the
+segmentation and what a model is allowed to get away with, and 27 over the
+server — what the interface is actually told about an order, whether every span
+points at the words it claims, the model client with the network stubbed out,
+and the IMAP client against the invented mailbox over a socket.
 That second suite was an empty folder for a while, so the package type-checked,
 ran nothing and reported success, a check that passes by finding nothing.
 
