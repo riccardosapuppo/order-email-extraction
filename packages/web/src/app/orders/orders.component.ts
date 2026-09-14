@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { ReaderSwitchComponent } from '../reading/reader-switch.component';
 import { ApiService, OrderSummary } from '../shell/api.service';
 import { STAGE_WORDS, asPercent, bandOf, saidPlainly } from '../shell/confidence';
 import { day as asDay, shortWhen } from '../shell/dates';
@@ -33,7 +34,7 @@ import { day as asDay, shortWhen } from '../shell/dates';
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, ReaderSwitchComponent],
   template: `
     <header class="head">
       <div>
@@ -43,13 +44,22 @@ import { day as asDay, shortWhen } from '../shell/dates';
           by anybody: every value was read out of a message, and every one of them
           can be pointed back at the words it came from.
         </p>
-
       </div>
 
       <button type="button" class="quiet" (click)="reload()" [disabled]="loading()">
         {{ loading() ? 'Reading…' : 'Read the folder again' }}
       </button>
     </header>
+
+    <!--
+      Who is reading, on the screen somebody actually lands on.
+
+      Folded up, because this screen is about the orders. Present, because a
+      second reader nobody can see from here is a second reader nobody has --
+      which is what it was while it lived behind a flag, then behind a sentence,
+      then behind a chip that only explained it.
+    -->
+    <app-reader-switch [compact]="true" (changed)="load()" />
 
     @if (problem(); as message) {
       <div class="card problem"><p>{{ message }}</p></div>
@@ -199,7 +209,7 @@ export class OrdersComponent {
     this.load();
   }
 
-  private load(): void {
+  load(): void {
     this.loading.set(true);
     this.problem.set(null);
 

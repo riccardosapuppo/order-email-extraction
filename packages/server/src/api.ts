@@ -19,7 +19,7 @@ import { fieldsOf } from '@order-email/core';
 import { theRules, type Reader } from '@order-email/core';
 
 import { mailboxOf, readMailbox, summarise, type Mailbox, type Settings } from './mailbox.js';
-import { theModel, whyNotAModel } from './model/claude.js';
+import { PROVIDERS, theModel, whyNotAModel } from './model/reader.js';
 import type { Source } from './source.js';
 
 export interface Options {
@@ -111,6 +111,21 @@ export function build({ folder, source, settings }: Options): Service {
       readBy: reader.describes,
       readerName: reader.name,
       couldBeAModel: reader.name === 'rules',
+
+      /*
+       * Who can be asked, sent rather than written into the interface.
+       *
+       * The screen renders one choice per entry here, so adding a provider is
+       * one entry in providers.ts and nothing else. A list hardcoded in the web
+       * package is a list that disagrees with the server the first time one is
+       * added, and disagrees silently: the choice appears and does not work.
+       */
+      providers: PROVIDERS.map((one) => ({
+        id: one.id,
+        label: one.label,
+        keyName: one.keyName,
+        defaultModel: one.defaultModel,
+      })),
       folder: mailbox.folder,
       readAt: mailbox.readAt,
       messages: mailbox.entries.length,
@@ -218,7 +233,7 @@ export function build({ folder, source, settings }: Options): Service {
    * forgets the key.
    */
   api.post('/api/reader', (req, res) => {
-    const asked = req.body as { reader?: unknown; key?: unknown; model?: unknown };
+    const asked = req.body as { reader?: unknown; provider?: unknown; key?: unknown; model?: unknown };
     const which = asked.reader === 'model' ? 'model' : asked.reader === 'rules' ? 'rules' : null;
 
     if (!which) {
@@ -232,7 +247,11 @@ export function build({ folder, source, settings }: Options): Service {
 
     const key = typeof asked.key === 'string' && asked.key.trim() !== '' ? asked.key.trim() : undefined;
     const model = typeof asked.model === 'string' && asked.model.trim() !== '' ? asked.model.trim() : undefined;
-    const why = whyNotAModel(key ? { key } : {});
+    const provider =
+      typeof asked.provider === 'string' && asked.provider.trim() !== '' ? asked.provider.trim() : undefined;
+
+    const wanted = { ...(key ? { key } : {}), ...(model ? { model } : {}), ...(provider ? { provider } : {}) };
+    const why = whyNotAModel(wanted);
 
     if (why) {
       // Said in words rather than as a code, because this answer is shown to a
@@ -240,7 +259,7 @@ export function build({ folder, source, settings }: Options): Service {
       return res.status(400).json({ error: why });
     }
 
-    reader = theModel({ ...(key ? { key } : {}), ...(model ? { model } : {}) });
+    reader = theModel(wanted);
     return reread(res);
   });
 

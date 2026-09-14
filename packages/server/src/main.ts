@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { theRules } from '@order-email/core';
 
 import { build } from './api.js';
-import { theModel, whyNotAModel } from './model/claude.js';
+import { theModel, whyNotAModel } from './model/reader.js';
 import { sourceFrom } from './source.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -92,12 +92,15 @@ if (which === 'model') {
     console.error(`Cannot read with a model: ${why}.`);
     console.error('Set it in the environment rather than on the command line:');
     console.error('  ANTHROPIC_API_KEY=... npm start -- --reader model');
+    console.error('  OPENAI_API_KEY=...    npm start -- --reader model --provider openai');
     console.error('A key given as an argument is a key in the shell history and in the process list.');
+    console.error('Or start normally and choose one on the orders screen, which needs no restart.');
     process.exit(2);
   }
 
   const chosen = flag('model');
-  reader = theModel(chosen ? { model: chosen } : {});
+  const from = flag('provider');
+  reader = theModel({ ...(chosen ? { model: chosen } : {}), ...(from ? { provider: from } : {}) });
 }
 
 console.log(`reading with ${reader.describes}`);

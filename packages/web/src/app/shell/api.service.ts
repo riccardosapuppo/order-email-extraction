@@ -129,6 +129,9 @@ export interface Health {
   /** The short form of the same thing, for the header. */
   readerName: string;
 
+  /** Who can be asked, sent by the server so the screen never disagrees with it. */
+  providers: ProviderChoice[];
+
   /** Whether the other reader is still an option, so the shell can say so. */
   couldBeAModel: boolean;
 
@@ -136,6 +139,16 @@ export interface Health {
   messages: number;
   orders: number;
   forAPerson: number;
+}
+
+/** One model provider, as the screen needs to render it. */
+export interface ProviderChoice {
+  id: string;
+  label: string;
+
+  /** The variable it would otherwise be read from, shown as the field's name. */
+  keyName: string;
+  defaultModel: string;
 }
 
 /** What `POST /api/reader` answers with: the state, and what that reading produced. */
@@ -178,7 +191,12 @@ export class ApiService {
    * Reload the page and it is gone from here; switch back to the rules and it
    * is gone from the server too.
    */
-  useReader(asked: { reader: 'rules' | 'model'; key?: string; model?: string }): Observable<ReaderNow> {
+  useReader(asked: {
+    reader: 'rules' | 'model';
+    provider?: string;
+    key?: string;
+    model?: string;
+  }): Observable<ReaderNow> {
     return this.http.post<ReaderNow>('/api/reader', asked);
   }
 

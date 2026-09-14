@@ -38,9 +38,10 @@ nothing per message, answer the same way twice, and can name the function and
 the characters behind every value. They are the default, and they are what the
 checks run: a check whose answer can change on its own is not a check.
 
-**A model** (`--reader model`) reads the messages nobody wrote a rule for, which
-is most of the mail that actually arrives. That is what the original of this
-system did, and it is why it worked.
+**A model** reads the messages nobody wrote a rule for, which is most of the
+mail that actually arrives. That is what the original of this system did, and it
+is why it worked. **Anthropic, Mistral or OpenAI** — chosen on the orders screen,
+with a key, without restarting anything.
 
 What both have to do is the same, and it is the whole of the argument: **a value
 has to point at the words it was read from.** A rule knows where it matched. A
@@ -131,19 +132,28 @@ could not have read is dropped rather than stored with a number beside it.
 The rules are still the default and still the only reader the checks use,
 because a check whose answer can change on its own is not a check.
 
-**And it is switched in the interface, not by restarting.** For a while which
+**And it is switched in the interface, on the first screen.** For a while which
 reader ran was decided by a command-line flag and described here, which is the
 same as not having the second one for anybody who opens this to see what it
 does: they would have to already know it existed, stop it, and start it again
 with different arguments. A capability you can only reach by restarting is a
-capability nobody sees.
+capability nobody sees — and one behind a link on another screen is one most
+people will not find either. It is a strip at the top of the orders, folded up,
+and the same control opened out on **How it reads**.
 
 ![The screen where the reader is chosen: the rules and a language model side by side, what each one costs, and the field for a key](docs/reading.png)
 
+**Three providers, and that is the point.** Anthropic, Mistral and OpenAI, each
+with its own key, its own default model and its own request shape — two of them
+share one, which is why there are two implementations and not three. The
+checking is identical for all of them, because the checking is about the
+contract and not about whose model honours it. A demonstration wired to a single
+vendor invites the reader to think otherwise.
+
 The key goes to the server on this machine and no further. It is not stored in
 the browser and not written to disk: it is held for the life of the process, and
-switching back to the rules forgets it. Reading these eleven messages costs a
-few pennies.
+going back to the rules forgets it. Reading these eleven messages costs a few
+pennies.
 
 ## Before you start
 
@@ -190,8 +200,13 @@ from a cold build here.
 
 ### Reading with a model instead
 
+Easiest on the screen: start normally and open the strip at the top of the
+orders. From a terminal, if you would rather:
+
 ```
 ANTHROPIC_API_KEY=... npm start -- --reader model
+OPENAI_API_KEY=...    npm start -- --reader model --provider openai
+MISTRAL_API_KEY=...   npm start -- --reader model --provider mistral
 ```
 
 **Asked for, never detected.** It would be friendlier to notice the key in the
@@ -206,8 +221,9 @@ flag**, for the same reason `IMAP_PASSWORD` beats whatever is written in an IMAP
 URL: a secret passed as an argument is a secret in the shell history and in the
 process list, where every other process on the machine can read it.
 
-`--model <id>` or `ANTHROPIC_MODEL` picks a different one; the default is
-`claude-sonnet-5`. Four messages are read at a time — one at a time is slow
+`--model <id>`, or the provider's own `*_MODEL` variable, picks a different one;
+each provider has a default and the screen shows it in the field as a
+placeholder. Four messages are read at a time — one at a time is slow
 enough that somebody watches a blank page, and all of them at once is how an
 account meets its rate limit on the first mailbox it sees. It costs a few pennies
 for these eleven.
@@ -365,12 +381,12 @@ npm run check:mark     # the header mark and the tab icon are one drawing
 npm run screenshots    # retakes the pictures above, likewise
 ```
 
-`npm test` is 122 tests: 89 over the reading, the parser, the joining, the
-segmentation and what a model is allowed to get away with, and 33 over the
+`npm test` is 130 tests: 89 over the reading, the parser, the joining, the
+segmentation and what a model is allowed to get away with, and 41 over the
 server — what the interface is actually told about an order, whether every span
-points at the words it claims, switching reader over HTTP, the model client with
-the network stubbed out, and the IMAP client against the invented mailbox over
-a socket.
+points at the words it claims, switching reader over HTTP, each of the three
+model providers with the network stubbed out, and the IMAP client against the
+invented mailbox over a socket.
 That second suite was an empty folder for a while, so the package type-checked,
 ran nothing and reported success, a check that passes by finding nothing.
 

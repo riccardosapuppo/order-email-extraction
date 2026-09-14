@@ -72,12 +72,29 @@ describe('choosing who reads, over HTTP', () => {
     assert.match(said.error, /rules.*model/);
   });
 
-  it('refuses the model with no key, and says which one is missing', async () => {
+  it('refuses the model with no key, and names every variable it would take', async () => {
     const answer = await ask({ reader: 'model' });
     assert.equal(answer.status, 400);
 
     const said = (await answer.json()) as { error: string };
     assert.match(said.error, /ANTHROPIC_API_KEY/);
+    assert.match(said.error, /OPENAI_API_KEY/);
+  });
+
+  it('offers more than one provider, and refuses one it does not have', async () => {
+    const health = (await (await fetch(`${base}/api/health`)).json()) as {
+      providers: Array<{ id: string; label: string; keyName: string; defaultModel: string }>;
+    };
+
+    // The screen renders one choice per entry, so this is what somebody is
+    // offered. Wired to a single vendor it would read as though the checking
+    // were specific to that vendor, which is the opposite of the argument.
+    assert.ok(health.providers.length >= 3, JSON.stringify(health.providers));
+    assert.ok(health.providers.every((one) => one.id && one.label && one.keyName && one.defaultModel));
+
+    const answer = await ask({ reader: 'model', provider: 'telepathy', key: 'a-key' });
+    assert.equal(answer.status, 400);
+    assert.match(((await answer.json()) as { error: string }).error, /no provider called/);
   });
 
   it('reads the mailbox again when asked for the rules, and counts what it found', async () => {
@@ -102,7 +119,11 @@ describe('choosing who reads, over HTTP', () => {
     // A key-shaped string that is not a key. Every message fails, which must
     // read as a broken reader and not as an empty mailbox -- and the rules have
     // to be reading again afterwards, so the screen is not left dead.
-    const answer = await ask({ reader: 'model', key: 'sk-ant-this-will-not-authenticate' });
+    const answer = await ask({
+      reader: 'model',
+      provider: 'anthropic',
+      key: 'sk-ant-this-will-not-authenticate',
+    });
 
     assert.equal(answer.status, 502);
 

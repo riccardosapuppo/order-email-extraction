@@ -164,31 +164,40 @@ try {
 
   // ---------------------------------------------------------- who is reading
   //
-  // The screen that makes the second reader reachable without a restart. No key
-  // is used and none is needed: what is checked is that the screen says which
-  // reader is running, that asking for the model without a key is refused with
-  // the reason on the page rather than in a console nobody opens, and that the
-  // refusal leaves the rules reading. A screen that can be left dead by a
-  // mistyped field is worse than no screen.
-  console.log('\nChoosing who reads');
+  // Checked on the orders screen, because that is where it has to be noticed:
+  // the second reader lived behind a flag, then a sentence, then a link, and
+  // each of those was a capability nobody could see from the screen they land
+  // on. No key is used and none is needed -- what is asserted is that the strip
+  // is there, that more than one provider is offered, and that asking for a
+  // model with an empty field is refused with the reason on the page rather
+  // than in a console nobody opens, leaving the rules reading.
+  console.log('\nChoosing who reads, from the screen somebody lands on');
 
-  await page.goto(`${BASE}/reading`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(600);
+  await page.goto(`${BASE}/orders`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(700);
 
-  expect('it says which reader is running', (await page.locator('.badge.on').count()) === 1);
+  const strip = page.locator('details.strip');
+  expect('the orders screen says who is reading', (await strip.count()) === 1);
 
-  const onTheRules = await page.locator('section.card.reader.on h2').innerText();
-  expect('and it is the rules, to begin with', /rules/i.test(onTheRules), onTheRules);
+  const folded = (await strip.locator('summary').innerText()).trim();
+  expect('and that a model could read instead', /model/i.test(folded), folded);
+  expect('and the rules are reading, to begin with', /rules/i.test(folded), folded);
+
+  await strip.locator('summary').click();
+  await page.waitForTimeout(300);
+
+  const offered = await page.locator('.pick').count();
+  expect('more than one provider is offered', offered >= 3, `${offered} offered`);
 
   await page.locator('form button[type="submit"]').click();
   await page.waitForTimeout(900);
 
-  const said = (await page.locator('.card.problem').innerText().catch(() => '')).trim();
-  expect('asking for the model with no key is refused, on the page', said.length > 0, 'nothing was shown');
-  expect('and the refusal names what is missing', /ANTHROPIC_API_KEY/.test(said), said);
+  const said = (await page.locator('.problem').innerText().catch(() => '')).trim();
+  expect('asking for a model with no key is refused, on the page', said.length > 0, 'nothing was shown');
+  expect('and the refusal names the variable it would have used', /_API_KEY/.test(said), said);
 
-  const still = await page.locator('section.card.reader.on h2').innerText();
-  expect('and the rules are still reading', /rules/i.test(still), still);
+  const after = (await strip.locator('summary').innerText()).trim();
+  expect('and the rules are still reading', /rules/i.test(after), after);
 
 
   console.log('');
