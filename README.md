@@ -163,17 +163,17 @@ pennies.
   `yarn` and `pnpm` will not read it as written.
 - **Nothing else, to see it work.** No database, no Docker, no API key, no
   account anywhere: it reads a folder and serves it on localhost. Reading with a
-  model instead wants an Anthropic API key, and reading a real mailbox wants
-  that mailbox. Both are asked for explicitly and neither is needed for anything
-  else on this page.
+  model instead wants a key from the provider you choose (Anthropic, Mistral or
+  OpenAI), and reading a real mailbox wants that mailbox. Both are asked for
+  explicitly and neither is needed for anything else on this page.
 - **265 MB** of `node_modules`, measured with `du -sh`, almost all of it the
   Angular build. The server and the reading rules have no runtime dependencies
   but Express.
 - **No network** after `npm install`, unless you ask for one. Nothing is sent
   anywhere while the rules are reading, which is rather the point of a tool that
-  reads your mail. Switching to the model on the reading screen sends each
-  message to Anthropic, and that screen says so before you do it — it is the one
-  thing here that leaves the machine, and it takes asking twice.
+  reads your mail. Switching to the model sends each message to the provider
+  picked on the reading screen — it is the one thing here that leaves the
+  machine, and it takes asking twice: pick a provider, then paste its key.
 - **To undo it:** delete the folder. Nothing is written outside it.
 
 The browser-driven checks (`check:screen`, `screenshots`) drive **Microsoft
@@ -230,7 +230,7 @@ for these eleven.
 
 Every value comes back through the check described under **Two readers, one
 contract**, and the interface names the reader beside each one: `by
-claude-sonnet-5` where the rules would have said `by quantity-and-unit`. A value
+claude-sonnet-5` where the rules would have said `by line-quantity`. A value
 the model could not have read is not there to be named — it is in the doubts,
 with the words that were not in the message.
 
